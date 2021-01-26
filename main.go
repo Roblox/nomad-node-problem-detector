@@ -3,13 +3,15 @@ package main
 import (
 	"log"
 	"os"
-
-	"github.com/urfave/cli/v2"
 	"time"
+
+	aggregator "github.com/Roblox/nomad-node-problem-detector/aggregator"
+	detector "github.com/Robox/nomad-node-problem-detector/detector"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
-	var aggregator bool
+	var aggregatorMode bool
 	app := &cli.App{
 		Name:                 "npd",
 		Usage:                "Nomad node problem detector",
@@ -26,16 +28,16 @@ func main() {
 			&cli.BoolFlag{
 				Name:        "aggregator",
 				Usage:       "Run npd in aggregator mode",
-				Destination: &aggregator,
+				Destination: &aggregatorMode,
 			},
 		},
 		Action: func(c *cli.Context) error {
-			if aggregator {
-				aggregate()
+			if aggregatorMode {
+				aggregator.aggregate()
 				return nil
 			}
 
-			detectNodeProblems()
+			detector.startNpdHttpServer()
 			return nil
 		},
 	}

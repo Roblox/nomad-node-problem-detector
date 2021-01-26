@@ -1,9 +1,10 @@
-package main
+package detector
 
 import (
 	"fmt"
 )
 
-func detectNodeProblems() {
+func startNpdHttpServer() {
 	fmt.Println("Hello nomad node problem detector!")
+
 }
