@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	agg "github.com/nomad-node-problem-detector/aggregator"
-	det "github.com/nomad-node-problem-detector/detector"
+	aggregator "github.com/nomad-node-problem-detector/aggregator"
+	detector "github.com/nomad-node-problem-detector/detector"
 	"github.com/urfave/cli/v2"
 )
 
@@ -33,11 +33,11 @@ func main() {
 		},
 		Action: func(c *cli.Context) error {
 			if aggregatorMode {
-				agg.Aggregate()
+				aggregator.Aggregate()
 				return nil
 			}
 
-			det.StartNpdHttpServer()
+			detector.StartNpdHttpServer()
 			return nil
 		},
 	}
