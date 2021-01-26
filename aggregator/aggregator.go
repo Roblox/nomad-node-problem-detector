@@ -4,6 +4,6 @@ import (
 	"fmt"
 )
 
-func aggregate() {
+func Aggregate() {
 	fmt.Println("Hello aggregator mode!")
 }

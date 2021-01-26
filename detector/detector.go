@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func startNpdHttpServer() {
+func StartNpdHttpServer() {
 	fmt.Println("Hello nomad node problem detector!")
 
 }

@@ -1,4 +1,4 @@
-module github.com/Roblox/nomad-node-problem-detector
+module github.com/nomad-node-problem-detector
 
 go 1.15
 

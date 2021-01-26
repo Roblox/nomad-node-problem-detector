@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	aggregator "github.com/Roblox/nomad-node-problem-detector/aggregator"
-	detector "github.com/Robox/nomad-node-problem-detector/detector"
+	agg "github.com/nomad-node-problem-detector/aggregator"
+	det "github.com/nomad-node-problem-detector/detector"
 	"github.com/urfave/cli/v2"
 )
 
@@ -33,11 +33,11 @@ func main() {
 		},
 		Action: func(c *cli.Context) error {
 			if aggregatorMode {
-				aggregator.aggregate()
+				agg.Aggregate()
 				return nil
 			}
 
-			detector.startNpdHttpServer()
+			det.StartNpdHttpServer()
 			return nil
 		},
 	}
