@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -35,6 +36,10 @@ func main() {
 			if aggregatorMode {
 				aggregator.Aggregate()
 				return nil
+			}
+
+			if c.NArg() > 0 {
+				return fmt.Errorf("npd requires 0 arguments.")
 			}
 
 			detector.StartNpdHttpServer()
