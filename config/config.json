@@ -1,0 +1,10 @@
+[
+{
+"type": "docker",
+"health_check": "docker_health_check.sh"
+},
+{
+"type": "containerd",
+"health_check": "containerd_health_check.sh"
+}
+]
