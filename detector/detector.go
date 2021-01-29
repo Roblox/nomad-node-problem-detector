@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os/exec"
 	"sync"
 	"time"
 )
@@ -21,10 +22,16 @@ type Config struct {
 	HealthCheck string `json:"health_check"`
 }
 
+const NNPD_ROOT = "/var/lib/nnpd"
+
 var (
 	m     map[string]*HealthCheck
 	mutex = &sync.Mutex{}
 )
+
+func init() {
+	m = make(map[string]*HealthCheck)
+}
 
 func StartNpdHttpServer() error {
 	fmt.Println("Starting nomad node problem detector...")
@@ -46,37 +53,62 @@ func StartNpdHttpServer() error {
 	return nil
 }
 
-func readConfig(configPath string, dest interface{}) error {
+func readConfig(configPath string, configFile interface{}) error {
 	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return err
 	}
 
-	return json.Unmarshal(data, dest)
+	return json.Unmarshal(data, configFile)
 }
 
 func collect(done chan bool) {
 	startServer := false
-	configPath := "/var/lib/nnpd/config.json"
-	dest := []Config{}
-	if err := readConfig(configPath, &dest); err != nil {
+	configPath := NNPD_ROOT + "/config.json"
+	configFile := []Config{}
+	if err := readConfig(configPath, &configFile); err != nil {
 		log.Fatalln(err)
 	}
 
+	var wg sync.WaitGroup
+
 	for {
 		fmt.Println("Collecting node health")
-		for _, cfg := range dest {
-			fmt.Println(cfg.Type + " " + cfg.HealthCheck)
+		for _, cfg := range configFile {
+			wg.Add(1)
+			go executeHealthCheck(&wg, cfg)
 		}
+		wg.Wait()
 
 		if !startServer {
-			fmt.Println("Starting nnpd server")
 			startServer = true
 			done <- startServer
 		}
 		time.Sleep(3 * time.Second)
 	}
 
+}
+
+func executeHealthCheck(wg *sync.WaitGroup, cfg Config) {
+	defer wg.Done()
+
+	hc := &HealthCheck{}
+	hc.Type = cfg.Type
+
+	healthCheck := NNPD_ROOT + "/" + cfg.Type + "/" + cfg.HealthCheck
+	cmd := exec.Command(healthCheck, "")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		hc.Result = "Unhealthy"
+		hc.Message = string(output)
+	} else {
+		hc.Result = "Healthy"
+		hc.Message = string(output)
+	}
+
+	mutex.Lock()
+	m[cfg.Type] = hc
+	mutex.Unlock()
 }
 
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -86,5 +118,21 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 func nodeHealthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Calling /v1/nodehealth/")
+
+	res := []HealthCheck{}
+
+	mutex.Lock()
+	for _, val := range m {
+		res = append(res, *val)
+	}
+	mutex.Unlock()
+
+	respJSON, err := json.Marshal(res)
+	if err != nil {
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	w.Write(respJSON)
 }
