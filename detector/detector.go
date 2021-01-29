@@ -9,28 +9,19 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	types "github.com/nomad-node-problem-detector/types"
 )
-
-type HealthCheck struct {
-	Type    string `json:"type"`
-	Result  string `json:"result"`
-	Message string `json:"messgae"`
-}
-
-type Config struct {
-	Type        string `json:"type"`
-	HealthCheck string `json:"health_check"`
-}
 
 const NNPD_ROOT = "/var/lib/nnpd"
 
 var (
-	m     map[string]*HealthCheck
+	m     map[string]*types.HealthCheck
 	mutex = &sync.Mutex{}
 )
 
 func init() {
-	m = make(map[string]*HealthCheck)
+	m = make(map[string]*types.HealthCheck)
 }
 
 func StartNpdHttpServer() error {
@@ -65,7 +56,7 @@ func readConfig(configPath string, configFile interface{}) error {
 func collect(done chan bool) {
 	startServer := false
 	configPath := NNPD_ROOT + "/config.json"
-	configFile := []Config{}
+	configFile := []types.Config{}
 	if err := readConfig(configPath, &configFile); err != nil {
 		log.Fatalln(err)
 	}
@@ -89,10 +80,10 @@ func collect(done chan bool) {
 
 }
 
-func executeHealthCheck(wg *sync.WaitGroup, cfg Config) {
+func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
 	defer wg.Done()
 
-	hc := &HealthCheck{}
+	hc := &types.HealthCheck{}
 	hc.Type = cfg.Type
 
 	healthCheck := NNPD_ROOT + "/" + cfg.Type + "/" + cfg.HealthCheck
@@ -119,7 +110,7 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 func nodeHealthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Calling /v1/nodehealth/")
 
-	res := []HealthCheck{}
+	res := []types.HealthCheck{}
 
 	mutex.Lock()
 	for _, val := range m {
