@@ -1,16 +1,15 @@
 package aggregator
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/hashicorp/nomad/api"
+	types "github.com/nomad-node-problem-detector/types"
 )
 
 func Aggregate() {
@@ -19,11 +18,13 @@ func Aggregate() {
 		log.Fatalln(err)
 	}
 
+	nodeHandle := client.Nodes()
+
 	queryOptions := &api.QueryOptions{AllowStale: true}
 
 	for {
 		fmt.Println("Collect and aggregate nodes health")
-		nodes, _, err := client.Nodes().List(queryOptions)
+		nodes, _, err := nodeHandle.List(queryOptions)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -47,14 +48,29 @@ func Aggregate() {
 				log.Fatalln(err)
 			}
 
-			var out bytes.Buffer
-			err = json.Indent(&out, body, "", "    ")
-			if err != nil {
+			result := []types.HealthCheck{}
+
+			if err := json.Unmarshal(body, &result); err != nil {
 				log.Fatalln(err)
 			}
 
-			out.WriteTo(os.Stdout)
-			fmt.Println()
+			nodeHealthy := true
+			for _, res := range result {
+				if res.Result != "Healthy" {
+					fmt.Printf("Node %s is not healthy, mark it as ineligible\n", node.Address)
+					if _, err := nodeHandle.ToggleEligibility(node.ID, false, nil); err != nil {
+						log.Fatalln(err)
+					}
+					nodeHealthy = false
+					break
+				}
+			}
+
+			if nodeHealthy {
+				if _, err := nodeHandle.ToggleEligibility(node.ID, true, nil); err != nil {
+					log.Fatalln(err)
+				}
+			}
 		}
 		time.Sleep(3 * time.Second)
 	}

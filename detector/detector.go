@@ -64,7 +64,7 @@ func collect(done chan bool) {
 	var wg sync.WaitGroup
 
 	for {
-		fmt.Println("Collecting node health")
+		//fmt.Println("Collecting node health")
 		for _, cfg := range configFile {
 			wg.Add(1)
 			go executeHealthCheck(&wg, cfg)
