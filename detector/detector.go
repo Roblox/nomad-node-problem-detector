@@ -3,8 +3,8 @@ package detector
 import (
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os/exec"
 	"sync"
@@ -20,12 +20,13 @@ var (
 	mutex = &sync.Mutex{}
 )
 
+//Todo: Add comments to describe locking/contention.
 func init() {
 	m = make(map[string]*types.HealthCheck)
 }
 
 func StartNpdHttpServer() error {
-	fmt.Println("Starting nomad node problem detector...")
+	log.Info("Starting nomad node problem detector...")
 
 	done := make(chan bool, 1)
 	go collect(done)
@@ -37,7 +38,7 @@ func StartNpdHttpServer() error {
 	http.HandleFunc("/v1/health/", healthCheckHandler)
 	http.HandleFunc("/v1/nodehealth/", nodeHealthHandler)
 
-	fmt.Println("nomad node problem detector ready to receive requests.")
+	log.Info("nomad node problem detector ready to receive requests.")
 	if err := http.ListenAndServe(":8083", nil); err != nil {
 		return err
 	}
@@ -58,13 +59,12 @@ func collect(done chan bool) {
 	configPath := NNPD_ROOT + "/config.json"
 	configFile := []types.Config{}
 	if err := readConfig(configPath, &configFile); err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	var wg sync.WaitGroup
 
 	for {
-		//fmt.Println("Collecting node health")
 		for _, cfg := range configFile {
 			wg.Add(1)
 			go executeHealthCheck(&wg, cfg)
@@ -89,6 +89,7 @@ func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
 	healthCheck := NNPD_ROOT + "/" + cfg.Type + "/" + cfg.HealthCheck
 	cmd := exec.Command(healthCheck, "")
 	output, err := cmd.CombinedOutput()
+	// Todo: Check if there is an actual error in executing the command.
 	if err != nil {
 		hc.Result = "Unhealthy"
 		hc.Message = string(output)
