@@ -12,8 +12,13 @@ import (
 	types "github.com/nomad-node-problem-detector/types"
 )
 
-func Aggregate() {
+func Aggregate(aggCycleTime string) {
 	client, err := getNomadClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	aggregationCycleTime, err := time.ParseDuration(aggCycleTime)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,7 +33,7 @@ func Aggregate() {
 		if err != nil {
 			errMsg := fmt.Sprintf("Error in listing nomad nodes: %v\n", err)
 			log.Warning(errMsg)
-			time.Sleep(15 * time.Second)
+			time.Sleep(aggregationCycleTime)
 			continue
 		}
 
@@ -106,7 +111,7 @@ func Aggregate() {
 				toggleNodeEligibility(nodeHandle, node.ID, node.Address, true)
 			}
 		}
-		time.Sleep(15 * time.Second)
+		time.Sleep(aggregationCycleTime)
 	}
 }
 

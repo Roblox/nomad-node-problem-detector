@@ -12,7 +12,8 @@ import (
 )
 
 func main() {
-	var aggregatorMode bool
+	var aggMode bool
+	var aggCycleTime string
 	app := &cli.App{
 		Name:                 "npd",
 		Usage:                "Nomad node problem detector",
@@ -29,12 +30,18 @@ func main() {
 			&cli.BoolFlag{
 				Name:        "aggregator",
 				Usage:       "Run npd in aggregator mode",
-				Destination: &aggregatorMode,
+				Destination: &aggMode,
+			},
+			&cli.StringFlag{
+				Name:        "aggregation-cycle-time",
+				Value:       "30s",
+				Destination: &aggCycleTime,
+				Usage:       "Time (in seconds) to wait between each aggregation cycle",
 			},
 		},
 		Action: func(c *cli.Context) error {
-			if aggregatorMode {
-				aggregator.Aggregate()
+			if aggMode {
+				aggregator.Aggregate(aggCycleTime)
 				return nil
 			}
 
