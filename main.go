@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
@@ -12,8 +11,6 @@ import (
 )
 
 func main() {
-	var aggMode bool
-	var aggCycleTime string
 	app := &cli.App{
 		Name:                 "npd",
 		Usage:                "Nomad node problem detector",
@@ -26,31 +23,9 @@ func main() {
 				Email: "smahajan@roblox.com",
 			},
 		},
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "aggregator",
-				Usage:       "Run npd in aggregator mode",
-				Destination: &aggMode,
-			},
-			&cli.StringFlag{
-				Name:        "aggregation-cycle-time",
-				Value:       "30s",
-				Destination: &aggCycleTime,
-				Usage:       "Time (in seconds) to wait between each aggregation cycle",
-			},
-		},
-		Action: func(c *cli.Context) error {
-			if aggMode {
-				aggregator.Aggregate(aggCycleTime)
-				return nil
-			}
-
-			if c.NArg() > 0 {
-				return fmt.Errorf("npd requires 0 arguments.")
-			}
-
-			detector.StartNpdHttpServer()
-			return nil
+		Commands: []*cli.Command{
+			aggregator.AggregatorCommand,
+			detector.DetectorCommand,
 		},
 	}
 
@@ -58,5 +33,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }

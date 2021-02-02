@@ -11,6 +11,7 @@ import (
 	"time"
 
 	types "github.com/nomad-node-problem-detector/types"
+	"github.com/urfave/cli/v2"
 )
 
 const NNPD_ROOT = "/var/lib/nnpd"
@@ -25,11 +26,31 @@ func init() {
 	m = make(map[string]*types.HealthCheck)
 }
 
-func StartNpdHttpServer() error {
+var DetectorCommand = &cli.Command{
+	Name:  "detector",
+	Usage: "Run nomad node problem detector HTTP server",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "detector-cycle-time",
+			Aliases: []string{"t"},
+			Value:   "3s",
+			Usage:   "Time (in seconds) to wait between each detector cycle",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		return startNpdHttpServer(c)
+	},
+}
+
+func startNpdHttpServer(context *cli.Context) error {
 	log.Info("Starting nomad node problem detector...")
+	detectorCycleTime, err := time.ParseDuration(context.String("detector-cycle-time"))
+	if err != nil {
+		return err
+	}
 
 	done := make(chan bool, 1)
-	go collect(done)
+	go collect(done, detectorCycleTime)
 	<-done
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +75,7 @@ func readConfig(configPath string, configFile interface{}) error {
 	return json.Unmarshal(data, configFile)
 }
 
-func collect(done chan bool) {
+func collect(done chan bool, detectorCycleTime time.Duration) {
 	startServer := false
 	configPath := NNPD_ROOT + "/config.json"
 	configFile := []types.Config{}
@@ -75,7 +96,7 @@ func collect(done chan bool) {
 			startServer = true
 			done <- startServer
 		}
-		time.Sleep(3 * time.Second)
+		time.Sleep(detectorCycleTime)
 	}
 
 }

@@ -10,17 +10,34 @@ import (
 
 	"github.com/hashicorp/nomad/api"
 	types "github.com/nomad-node-problem-detector/types"
+	"github.com/urfave/cli/v2"
 )
 
-func Aggregate(aggCycleTime string) {
+var AggregatorCommand = &cli.Command{
+	Name:  "aggregator",
+	Usage: "Run npd in aggregator mode",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "aggregation-cycle-time",
+			Aliases: []string{"t"},
+			Value:   "30s",
+			Usage:   "Time (in seconds) to wait between each aggregation cycle",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		return aggregate(c)
+	},
+}
+
+func aggregate(context *cli.Context) error {
 	client, err := getNomadClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	aggregationCycleTime, err := time.ParseDuration(aggCycleTime)
+	aggregationCycleTime, err := time.ParseDuration(context.String("aggregation-cycle-time"))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	nodeHandle := client.Nodes()
@@ -113,6 +130,7 @@ func Aggregate(aggCycleTime string) {
 		}
 		time.Sleep(aggregationCycleTime)
 	}
+	return nil
 }
 
 // Toggle Nomad node eligibility, and returns a boolean to indicate if the operation was successful
