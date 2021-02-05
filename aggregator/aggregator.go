@@ -44,6 +44,8 @@ func aggregate(context *cli.Context) error {
 
 	queryOptions := &api.QueryOptions{AllowStale: true}
 
+	// map[nodeID][node health check /v1/nodehealth/]
+	m := make(map[string][]types.HealthCheck)
 	for {
 		log.Info("Collect and aggregate nodes health")
 		nodes, _, err := nodeHandle.List(queryOptions)
@@ -100,48 +102,63 @@ func aggregate(context *cli.Context) error {
 
 			resp.Body.Close()
 
-			result := []types.HealthCheck{}
-			if err := json.Unmarshal(body, &result); err != nil {
+			current := []types.HealthCheck{}
+			if err := json.Unmarshal(body, &current); err != nil {
 				errMsg := fmt.Sprintf("Error in unmarshalling /v1/nodehealth/ HTTP response body, skipping node %s\n", node.Address)
 				log.Warning(errMsg)
 				continue
 			}
 
+			var nodeHealth []types.HealthCheck
+			if m[node.ID] != nil {
+				nodeHealth = m[node.ID]
+			}
+
+			previous := make(map[string]types.HealthCheck)
+			for _, nh := range nodeHealth {
+				previous[nh.Type] = nh
+			}
+
 			nodeHealthy := true
-			toggleOK := true
-			for _, res := range result {
-				if res.Result != "Healthy" {
-					errMsg := fmt.Sprintf("Node %s is not healthy, marking it as ineligible.", node.Address)
+			stateChanged := false
+
+			for _, curr := range current {
+				if curr.Result != "Healthy" {
+					errMsg := fmt.Sprintf("Node %s: %s is %s\n", node.Address, curr.Type, curr.Result)
 					log.Warning(errMsg)
-					toggleOK = toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
 					nodeHealthy = false
-					break
+				}
+
+				prev, ok := previous[curr.Type]
+				if ok {
+					if prev.Result == curr.Result {
+						continue
+					} else {
+						stateChanged = true
+					}
 				}
 			}
 
-			if !toggleOK {
-				// Skip node
-				continue
+			if len(previous) == 0 || stateChanged {
+				if nodeHealthy {
+					toggleNodeEligibility(nodeHandle, node.ID, node.Address, true)
+				} else {
+					toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
+				}
 			}
-
-			if nodeHealthy {
-				toggleNodeEligibility(nodeHandle, node.ID, node.Address, true)
-			}
+			m[node.ID] = current
 		}
 		time.Sleep(aggregationCycleTime)
 	}
 	return nil
 }
 
-// Toggle Nomad node eligibility, and returns a boolean to indicate if the operation was successful
-// or unsuccessful.
-func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, eligible bool) bool {
+// Toggle Nomad node eligibility.
+func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, eligible bool) {
 	if _, err := nodeHandle.ToggleEligibility(nodeID, eligible, nil); err != nil {
 		errMsg := fmt.Sprintf("Error in toggling node eligibility, skipping node %s\n", nodeAddress)
 		log.Warning(errMsg)
-		return false
 	}
-	return true
 }
 
 // Check if Nomad node problem detector (nNPD) HTTP server is healthy and active.
