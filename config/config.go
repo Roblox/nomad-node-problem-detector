@@ -89,10 +89,13 @@ func generateConfig(context *cli.Context) error {
 		return fmt.Errorf("Error in generating config. No health checks present.")
 	}
 
-	configFile, err := json.MarshalIndent(result, "", "\t")
+	byteArray, err := json.MarshalIndent(result, "", "\t")
 	if err != nil {
 		return err
 	}
+
+	s := string(byteArray) + "\n"
+	configFile := []byte(s)
 
 	configFilePath := filepath.Join(rootDir, "config.json")
 	if err := ioutil.WriteFile(configFilePath, configFile, 0644); err != nil {
