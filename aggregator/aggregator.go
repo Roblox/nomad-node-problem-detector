@@ -20,7 +20,7 @@ var AggregatorCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:    "aggregation-cycle-time",
 			Aliases: []string{"t"},
-			Value:   "30s",
+			Value:   "15s",
 			Usage:   "Time (in seconds) to wait between each aggregation cycle",
 		},
 	},
