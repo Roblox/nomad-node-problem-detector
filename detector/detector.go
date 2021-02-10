@@ -14,11 +14,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const NNPD_ROOT = "/var/lib/nnpd"
-
 var (
-	m     map[string]*types.HealthCheck
-	mutex = &sync.Mutex{}
+	m        map[string]*types.HealthCheck
+	mutex    = &sync.Mutex{}
+	nnpdRoot = "/var/lib/nnpd"
 )
 
 //Todo: Add comments to describe locking/contention.
@@ -36,6 +35,11 @@ var DetectorCommand = &cli.Command{
 			Value:   "3s",
 			Usage:   "Time (in seconds) to wait between each detector cycle",
 		},
+		&cli.StringFlag{
+			Name:    "root-dir",
+			Aliases: []string{"d"},
+			Usage:   "Location of health checks",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		return startNpdHttpServer(c)
@@ -47,6 +51,11 @@ func startNpdHttpServer(context *cli.Context) error {
 	detectorCycleTime, err := time.ParseDuration(context.String("detector-cycle-time"))
 	if err != nil {
 		return err
+	}
+
+	rootDir := context.String("root-dir")
+	if rootDir != "" {
+		nnpdRoot = rootDir
 	}
 
 	done := make(chan bool, 1)
@@ -77,7 +86,7 @@ func readConfig(configPath string, configFile interface{}) error {
 
 func collect(done chan bool, detectorCycleTime time.Duration) {
 	startServer := false
-	configPath := NNPD_ROOT + "/config.json"
+	configPath := nnpdRoot + "/config.json"
 	configFile := []types.Config{}
 	if err := readConfig(configPath, &configFile); err != nil {
 		log.Fatal(err)
@@ -107,7 +116,7 @@ func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
 	hc := &types.HealthCheck{}
 	hc.Type = cfg.Type
 
-	healthCheck := NNPD_ROOT + "/" + cfg.Type + "/" + cfg.HealthCheck
+	healthCheck := nnpdRoot + "/" + cfg.Type + "/" + cfg.HealthCheck
 	cmd := exec.Command(healthCheck, "")
 	output, err := cmd.CombinedOutput()
 	// Todo: Check if there is an actual error in executing the command.
