@@ -6,6 +6,7 @@ import (
 	"time"
 
 	aggregator "github.com/nomad-node-problem-detector/aggregator"
+	config "github.com/nomad-node-problem-detector/config"
 	detector "github.com/nomad-node-problem-detector/detector"
 	"github.com/urfave/cli/v2"
 )
@@ -26,6 +27,7 @@ func main() {
 		Commands: []*cli.Command{
 			aggregator.AggregatorCommand,
 			detector.DetectorCommand,
+			config.ConfigCommand,
 		},
 	}
 

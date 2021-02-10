@@ -1,4 +1,5 @@
 BINARY ?= npd
+BINDIR ?= $(DESTDIR)/usr/local/bin
 ifndef $(GOLANG)
     GOLANG=$(shell which go)
     export GOLANG
@@ -15,3 +16,8 @@ clean:
 .PHONY: build
 build:
 	$(GOLANG) build -o $(BINARY) .
+
+.PHONY: install
+install:
+	$(GOLANG) build -o $(BINARY) .
+	install -m 755 $(BINARY) $(BINDIR)/$(BINARY)
