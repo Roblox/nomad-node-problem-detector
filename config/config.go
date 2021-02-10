@@ -95,8 +95,10 @@ func generateConfig(context *cli.Context) error {
 	}
 
 	configFilePath := filepath.Join(rootDir, "config.json")
-	return ioutil.WriteFile(configFilePath, configFile, 0644)
-	fmt.Printf("Config file: %s generated successfully.\n", configFilePath)
+	if err := ioutil.WriteFile(configFilePath, configFile, 0644); err != nil {
+		return err
+	}
 
+	fmt.Printf("Config file: %s generated successfully.\n", configFilePath)
 	return nil
 }
