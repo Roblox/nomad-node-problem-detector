@@ -78,7 +78,7 @@ func generateConfig(context *cli.Context) error {
 		}
 
 		if len(hcFiles) > 1 {
-			return fmt.Errorf("There should be only 1 health check present in the %s directory.", healthCheckDir)
+			return fmt.Errorf("There should be only 1 health check present in the %s directory.\nIf health checks are present at a different location, use --root-dir to set the location. npd config generate --help for more details.\n", healthCheckDir)
 		}
 
 		res.HealthCheck = hcFiles[0].Name()
