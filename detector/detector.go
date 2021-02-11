@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -56,6 +57,11 @@ func startNpdHttpServer(context *cli.Context) error {
 	rootDir := context.String("root-dir")
 	if rootDir != "" {
 		nnpdRoot = rootDir
+	}
+
+	nomadTaskDir := os.Getenv("NOMAD_TASK_DIR")
+	if nomadTaskDir != "" {
+		nnpdRoot = nomadTaskDir + nnpdRoot
 	}
 
 	done := make(chan bool, 1)
