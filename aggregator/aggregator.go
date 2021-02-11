@@ -23,6 +23,12 @@ var AggregatorCommand = &cli.Command{
 			Value:   "15s",
 			Usage:   "Time (in seconds) to wait between each aggregation cycle",
 		},
+		&cli.StringFlag{
+			Name:    "nomad-server",
+			Aliases: []string{"s"},
+			Value:   "http://localhost:4646",
+			Usage:   "HTTP API address of a Nomad server or agent.",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		return aggregate(c)
@@ -30,7 +36,8 @@ var AggregatorCommand = &cli.Command{
 }
 
 func aggregate(context *cli.Context) error {
-	client, err := getNomadClient()
+	nomadServer := context.String("nomad-server")
+	client, err := getNomadClient(nomadServer)
 	if err != nil {
 		return err
 	}
@@ -185,9 +192,9 @@ func isNpdServerActive(npdServer string) (bool, error) {
 
 // Get Nomad HTTP client.
 // This client will be used to list nodes and toggle node eligibility.
-func getNomadClient() (*api.Client, error) {
+func getNomadClient(nomadServer string) (*api.Client, error) {
 	cfg := api.DefaultConfig()
-	cfg.Address = "http://localhost:4646"
+	cfg.Address = nomadServer
 	cfg.TLSConfig.Insecure = true
 
 	timeout, err := time.ParseDuration("5s")
