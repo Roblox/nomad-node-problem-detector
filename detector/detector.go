@@ -93,14 +93,15 @@ func readConfig(configPath string, configFile interface{}) error {
 func collect(done chan bool, detectorCycleTime time.Duration) {
 	startServer := false
 	configPath := nnpdRoot + "/config.json"
-	configFile := []types.Config{}
-	if err := readConfig(configPath, &configFile); err != nil {
-		log.Fatal(err)
-	}
 
 	var wg sync.WaitGroup
 
 	for {
+		configFile := []types.Config{}
+		if err := readConfig(configPath, &configFile); err != nil {
+			log.Fatal(err)
+		}
+
 		for _, cfg := range configFile {
 			wg.Add(1)
 			go executeHealthCheck(&wg, cfg)
