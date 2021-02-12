@@ -68,9 +68,8 @@ func aggregate(context *cli.Context) error {
 
 			npdActive, err := isNpdServerActive(npdServer)
 			if err != nil {
-				errMsg := fmt.Sprintf("Node %s is unreachable, marking it as ineligible.", node.Address)
+				errMsg := fmt.Sprintf("Node %s is unreachable, skipping node.", node.Address)
 				log.Warning(errMsg)
-				toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
 				continue
 			}
 
