@@ -29,14 +29,6 @@ var ConfigCommand = &cli.Command{
 				return generateConfig(c)
 			},
 		},
-		{
-			Name:  "upload",
-			Usage: "Upload the config and the health checks into artifactory or docker registry",
-			Action: func(c *cli.Context) error {
-				fmt.Println("upload command: ", c.Args().First())
-				return nil
-			},
-		},
 	},
 }
 
