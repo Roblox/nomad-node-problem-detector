@@ -1,5 +1,6 @@
 job "detector" {
   datacenters = ["dc1"]
+  type = "system"
 
   group "detector-group" {
     network {
