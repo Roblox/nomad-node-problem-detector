@@ -51,7 +51,7 @@ func generateConfig(context *cli.Context) error {
 	directoryExists := false
 
 	for _, fd := range files {
-		if !fd.IsDir() {
+		if !fd.IsDir() || fd.Name() == ".git" {
 			continue
 		}
 
