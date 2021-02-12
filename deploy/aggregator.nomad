@@ -3,14 +3,11 @@ job "aggregator" {
   type = "service"
 
   group "aggregator-group" {
-    network {
-      mode = bridge
-    }
-
     task "aggregator-task" {
       driver = "docker"
 
       config {
+	network_mode = "host"
 	image = "shm32/npd-aggregator:1.0.0"
 	command = "npd"
 	args    = ["aggregator"]
