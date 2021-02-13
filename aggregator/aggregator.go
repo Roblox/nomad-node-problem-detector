@@ -6,6 +6,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/nomad/api"
@@ -35,6 +38,8 @@ var AggregatorCommand = &cli.Command{
 	},
 }
 
+var pause bool
+
 func aggregate(context *cli.Context) error {
 	nomadServer := context.String("nomad-server")
 	client, err := getNomadClient(nomadServer)
@@ -47,6 +52,10 @@ func aggregate(context *cli.Context) error {
 		return err
 	}
 
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGUSR1)
+	go flipPause(sigs)
+
 	nodeHandle := client.Nodes()
 
 	queryOptions := &api.QueryOptions{AllowStale: true}
@@ -54,6 +63,11 @@ func aggregate(context *cli.Context) error {
 	// map[nodeID][node health check /v1/nodehealth/]
 	m := make(map[string][]types.HealthCheck)
 	for {
+		if pause {
+			// Aggregator is paused. Wait for unpause.
+			continue
+		}
+
 		log.Info("Collect and aggregate nodes health")
 		nodes, _, err := nodeHandle.List(queryOptions)
 		if err != nil {
@@ -187,6 +201,22 @@ func isNpdServerActive(npdServer string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+// flipPause pauses and unpauses aggregator based on receiving SIGUSR1 signal.
+func flipPause(sigs chan os.Signal) {
+	for {
+		select {
+		case <-sigs:
+			pause = !pause
+			if pause {
+				log.Info("Received signal SIGUSR1, pausing aggregator.")
+			} else {
+				log.Info("Received signal SIGUSR1, unpausing aggregator.")
+			}
+		default:
+		}
+	}
 }
 
 // Get Nomad HTTP client.
