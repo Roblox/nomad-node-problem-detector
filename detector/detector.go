@@ -39,7 +39,7 @@ var DetectorCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:    "root-dir",
 			Aliases: []string{"d"},
-			Usage:   "Location of health checks",
+			Usage:   "Location of health checks. Defaults to pwd",
 		},
 	},
 	Action: func(c *cli.Context) error {

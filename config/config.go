@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	types "github.com/nomad-node-problem-detector/types"
 	"github.com/urfave/cli/v2"
@@ -22,14 +24,75 @@ var ConfigCommand = &cli.Command{
 				&cli.StringFlag{
 					Name:    "root-dir",
 					Aliases: []string{"d"},
-					Usage:   "Location of health checks",
+					Usage:   "Location of health checks. Defaults to pwd",
 				},
 			},
 			Action: func(c *cli.Context) error {
 				return generateConfig(c)
 			},
 		},
+		{
+			Name:  "upload",
+			Usage: "Upload the config and the health checks into docker registry",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:     "image",
+					Aliases:  []string{"i"},
+					Required: true,
+					Usage:    "Fully qualified docker image, that will be pushed to the registry",
+				},
+				&cli.StringFlag{
+					Name:    "root-dir",
+					Aliases: []string{"d"},
+					Usage:   "Location of health checks. Defaults to pwd",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return uploadConfig(c)
+			},
+		},
 	},
+}
+
+func uploadConfig(context *cli.Context) error {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	rootDir := context.String("root-dir")
+	if rootDir == "" {
+		rootDir = pwd
+	}
+
+	image := context.String("image")
+	pwdSlice := strings.Split(pwd, "/")
+	var dockerfilePath string
+	if len(pwdSlice) > 1 {
+		dockerfilePath = strings.Join(pwdSlice[len(pwdSlice)-2:], "/")
+	}
+
+	if dockerfilePath != "nomad-node-problem-detector/build" {
+		return fmt.Errorf("npd config upload must be run from project root build directory: nomad-node-problem-detector/build")
+	}
+
+	configFilePath := rootDir + "/config.json"
+	if _, err := os.Stat(configFilePath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("config.json missing in --root-dir: %s. npd config upload -h for help\n", rootDir)
+		}
+		return err
+	}
+
+	uploadCmd := pwd + "/" + "upload.sh"
+	cmd := exec.Command(uploadCmd, image, rootDir)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Error in uploading docker image %s: %s: %s\n", image, err.Error(), string(output))
+	}
+
+	fmt.Println(string(output))
+	return nil
 }
 
 func generateConfig(context *cli.Context) error {
