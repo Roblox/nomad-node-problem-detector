@@ -59,7 +59,7 @@ func startNpdHttpServer(context *cli.Context) error {
 		nnpdRoot = rootDir
 	}
 
-	nomadTaskDir := os.Getenv("NOMAD_TASK_DIR")
+	nomadTaskDir := os.Getenv("NOMAD_ALLOC_DIR")
 	if nomadTaskDir != "" {
 		nnpdRoot = nomadTaskDir + nnpdRoot
 	}
