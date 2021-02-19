@@ -39,7 +39,7 @@ var DetectorCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:    "root-dir",
 			Aliases: []string{"d"},
-			Usage:   "Location of health checks",
+			Usage:   "Location of health checks. Defaults to pwd",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -59,7 +59,7 @@ func startNpdHttpServer(context *cli.Context) error {
 		nnpdRoot = rootDir
 	}
 
-	nomadTaskDir := os.Getenv("NOMAD_TASK_DIR")
+	nomadTaskDir := os.Getenv("NOMAD_ALLOC_DIR")
 	if nomadTaskDir != "" {
 		nnpdRoot = nomadTaskDir + nnpdRoot
 	}
