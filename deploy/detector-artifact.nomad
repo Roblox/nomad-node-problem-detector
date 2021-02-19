@@ -13,7 +13,7 @@ job "detector" {
       driver = "raw_exec"
       artifact {
         source      = "git::https://github.com/shishir-a412ed/nomad-health-checks.git"
-        destination = "local/var/lib/nnpd"
+        destination = "../alloc/var/lib/nnpd"
       }
 
       config {
