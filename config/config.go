@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	types "github.com/nomad-node-problem-detector/types"
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -91,7 +92,7 @@ func uploadConfig(context *cli.Context) error {
 		return fmt.Errorf("Error in uploading docker image %s: %s: %s\n", image, err.Error(), string(output))
 	}
 
-	fmt.Println(string(output))
+	log.Info(string(output))
 	return nil
 }
 
