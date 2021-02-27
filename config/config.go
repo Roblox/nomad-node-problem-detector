@@ -8,9 +8,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/gosuri/uiprogress"
+	"github.com/gosuri/uiprogress/util/strutil"
 	types "github.com/nomad-node-problem-detector/types"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -55,6 +58,14 @@ var ConfigCommand = &cli.Command{
 	},
 }
 
+var steps = []string{
+	"creating /var/lib/nnpd",
+	"copying health scripts",
+	"creating tarball",
+	"building docker image",
+	"uploading docker image",
+}
+
 func uploadConfig(context *cli.Context) error {
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -87,12 +98,29 @@ func uploadConfig(context *cli.Context) error {
 
 	uploadCmd := pwd + "/" + "upload.sh"
 	cmd := exec.Command(uploadCmd, image, rootDir)
+
+	var wg sync.WaitGroup
+	uiprogress.Start()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		bar := uiprogress.AddBar(len(steps)).AppendCompleted().PrependElapsed()
+		bar.Width = 50
+		bar.PrependFunc(func(b *uiprogress.Bar) string {
+			return strutil.Resize("npd: "+steps[b.Current()-1], 30)
+		})
+
+		for bar.Incr() {
+			time.Sleep(time.Second * 2)
+		}
+	}()
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("Error in uploading docker image %s: %s: %s\n", image, err.Error(), string(output))
 	}
 
-	log.Info(string(output))
+	wg.Wait()
 	return nil
 }
 

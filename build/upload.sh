@@ -14,8 +14,8 @@ main() {
   mkdir -p var/lib/nnpd
   cp -R $root_dir/* var/lib/nnpd
   tar -zcf nnpd.tar var/lib/nnpd
-  docker build -t $image .
-  docker push $image
+  docker build -t $image . >/dev/null >&1
+  docker push $image >/dev/null >&1
 }
 
 cleanup() {
