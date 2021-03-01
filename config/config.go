@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -110,8 +111,9 @@ func uploadConfig(context *cli.Context) error {
 			return strutil.Resize("npd: "+steps[b.Current()-1], 30)
 		})
 
+		rand.Seed(500)
 		for bar.Incr() {
-			time.Sleep(time.Second * 2)
+			time.Sleep(time.Millisecond * time.Duration(rand.Intn(2000)))
 		}
 	}()
 
@@ -121,6 +123,7 @@ func uploadConfig(context *cli.Context) error {
 	}
 
 	wg.Wait()
+	fmt.Printf("%s build and uploaded successfully.\n", image)
 	return nil
 }
 
