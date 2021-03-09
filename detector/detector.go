@@ -39,7 +39,7 @@ var DetectorCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:    "root-dir",
 			Aliases: []string{"d"},
-			Usage:   "Location of health checks. Defaults to pwd",
+			Usage:   "Location of health checks. Defaults to /var/lib/nnpd",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -59,9 +59,9 @@ func startNpdHttpServer(context *cli.Context) error {
 		nnpdRoot = rootDir
 	}
 
-	nomadTaskDir := os.Getenv("NOMAD_ALLOC_DIR")
-	if nomadTaskDir != "" {
-		nnpdRoot = nomadTaskDir + nnpdRoot
+	nomadAllocDir := os.Getenv("NOMAD_ALLOC_DIR")
+	if nomadAllocDir != "" {
+		nnpdRoot = nomadAllocDir + nnpdRoot
 	}
 
 	done := make(chan bool, 1)
@@ -82,6 +82,16 @@ func startNpdHttpServer(context *cli.Context) error {
 }
 
 func readConfig(configPath string, configFile interface{}) error {
+	if _, err := os.Stat(configPath); err != nil {
+		if os.IsNotExist(err) {
+			msg := fmt.Sprintf("Config file: %s does not exist, continue with default checks.\n", configPath)
+			log.Warning(msg)
+			return nil
+		} else {
+			return err
+		}
+	}
+
 	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return err
@@ -96,12 +106,12 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 
 	var wg sync.WaitGroup
 
-	for {
-		configFile := []types.Config{}
-		if err := readConfig(configPath, &configFile); err != nil {
-			log.Fatal(err)
-		}
+	configFile := []types.Config{}
+	if err := readConfig(configPath, &configFile); err != nil {
+		log.Fatal(err)
+	}
 
+	for {
 		for _, cfg := range configFile {
 			wg.Add(1)
 			go executeHealthCheck(&wg, cfg)
