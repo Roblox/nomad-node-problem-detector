@@ -1,6 +1,7 @@
 package detector
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -135,14 +136,17 @@ func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
 
 	healthCheck := nnpdRoot + "/" + cfg.Type + "/" + cfg.HealthCheck
 	cmd := exec.Command(healthCheck, "")
-	output, err := cmd.CombinedOutput()
-	// Todo: Check if there is an actual error in executing the command.
-	if err != nil {
+
+	var output bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
 		hc.Result = "Unhealthy"
-		hc.Message = string(output)
+		hc.Message = fmt.Sprintf("%s:%s\n", err.Error(), stderr.String())
 	} else {
 		hc.Result = "Healthy"
-		hc.Message = string(output)
+		hc.Message = output.String()
 	}
 
 	mutex.Lock()
