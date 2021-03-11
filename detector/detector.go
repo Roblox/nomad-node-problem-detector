@@ -119,6 +119,8 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 		}
 		wg.Wait()
 
+		getDiskStats()
+
 		if !startServer {
 			startServer = true
 			done <- startServer
@@ -126,6 +128,19 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 		time.Sleep(detectorCycleTime)
 	}
 
+}
+
+func getDiskStats() {
+	hc := &types.HealthCheck{}
+	hc.Type = "DiskUnderPressure"
+
+	diskStats, err := collectDiskStats()
+	if err != nil {
+		hc.Result = "true"
+		hc.Message = err.Error()
+	}
+
+	log.Info("Disk used percent: %f\n", diskStats.UsedPercent)
 }
 
 func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
