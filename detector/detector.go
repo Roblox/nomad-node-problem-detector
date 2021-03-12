@@ -6,6 +6,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -138,9 +139,17 @@ func getDiskStats() {
 	if err != nil {
 		hc.Result = "true"
 		hc.Message = err.Error()
+	} else if math.Round(diskStats.UsedPercent) >= 90 {
+		hc.Result = "true"
+		hc.Message = fmt.Sprintf("disk usage is %f percent", diskStats.UsedPercent)
+	} else {
+		hc.Result = "false"
+		hc.Message = fmt.Sprintf("disk usage is %f percent", diskStats.UsedPercent)
 	}
 
-	log.Info("Disk used percent: %f\n", diskStats.UsedPercent)
+	mutex.Lock()
+	m[hc.Type] = hc
+	mutex.Unlock()
 }
 
 func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
