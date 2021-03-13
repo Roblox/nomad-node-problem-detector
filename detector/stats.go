@@ -3,7 +3,9 @@ package detector
 import (
 	"fmt"
 	"math"
+	"time"
 
+	"github.com/mackerelio/go-osstat/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
 )
@@ -25,6 +27,35 @@ type DiskStats struct {
 	Available         uint64
 	UsedPercent       float64
 	InodesUsedPercent float64
+}
+
+// CPUStats represents stats related to cpu usage
+type CPUStats struct {
+	User   float64
+	System float64
+	Idle   float64
+}
+
+// Collect CPU stats
+func collectCPUStats() (*CPUStats, error) {
+	before, err := cpu.Get()
+	if err != nil {
+		return nil, err
+	}
+	time.Sleep(time.Duration(1) * time.Second)
+	after, err := cpu.Get()
+	if err != nil {
+		return nil, err
+	}
+
+	total := float64(after.Total - before.Total)
+	cpuStats := &CPUStats{
+		User:   (float64(after.User-before.User) / total) * 100,
+		System: (float64(after.System-before.System) / total) * 100,
+		Idle:   (float64(after.Idle-before.Idle) / total) * 100,
+	}
+
+	return cpuStats, nil
 }
 
 // Collect disk usage for root (/) partition
@@ -72,6 +103,7 @@ func toDiskStats(usage *disk.UsageStat, partitionStat *disk.PartitionStat) *Disk
 	return &ds
 }
 
+// Collect memory stats.
 func collectMemoryStats() (*MemoryStats, error) {
 	memStats, err := mem.VirtualMemory()
 	if err != nil {

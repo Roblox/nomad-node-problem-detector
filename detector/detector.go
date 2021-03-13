@@ -121,8 +121,9 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 		}
 		wg.Wait()
 
-		getDiskStats()
+		getCPUStats()
 		getMemoryStats()
+		getDiskStats()
 
 		if !startServer {
 			startServer = true
@@ -131,6 +132,28 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 		time.Sleep(detectorCycleTime)
 	}
 
+}
+
+// Get CPU usage of the nomad client node.
+func getCPUStats() {
+	hc := &types.HealthCheck{}
+	hc.Type = "CPUUnderPressure"
+
+	cpuStats, err := collectCPUStats()
+	if err != nil {
+		hc.Result = "true"
+		hc.Message = err.Error()
+	} else if math.Round(cpuStats.User) >= 85 {
+		hc.Result = "true"
+		hc.Message = fmt.Sprintf("CPU usage: %f %%", cpuStats.User)
+	} else {
+		hc.Result = "false"
+		hc.Message = fmt.Sprintf("CPU usage: %f %%", cpuStats.User)
+	}
+
+	mutex.Lock()
+	m[hc.Type] = hc
+	mutex.Unlock()
 }
 
 // Get memory usage of the nomad client node.
