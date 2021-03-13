@@ -87,7 +87,7 @@ func startNpdHttpServer(context *cli.Context) error {
 func readConfig(configPath string, configFile interface{}) error {
 	if _, err := os.Stat(configPath); err != nil {
 		if os.IsNotExist(err) {
-			msg := fmt.Sprintf("Config file: %s does not exist, continue with default checks.\n", configPath)
+			msg := fmt.Sprintf("Config file: %s does not exist, continue with default cpu, memory and disk checks.\n", configPath)
 			log.Warning(msg)
 			return nil
 		} else {
@@ -170,10 +170,10 @@ func getDiskStats() {
 		hc.Message = err.Error()
 	} else if math.Round(diskStats.UsedPercent) >= 90 {
 		hc.Result = "true"
-		hc.Message = fmt.Sprintf("disk usage is %f percent", diskStats.UsedPercent)
+		hc.Message = fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent)
 	} else {
 		hc.Result = "false"
-		hc.Message = fmt.Sprintf("disk usage is %f percent", diskStats.UsedPercent)
+		hc.Message = fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent)
 	}
 
 	mutex.Lock()
