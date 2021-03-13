@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
+	github.com/docker/go-units v0.3.3
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1

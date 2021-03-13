@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	units "github.com/docker/go-units"
 	types "github.com/nomad-node-problem-detector/types"
 	"github.com/urfave/cli/v2"
 )
@@ -121,6 +122,7 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 		wg.Wait()
 
 		getDiskStats()
+		getMemoryStats()
 
 		if !startServer {
 			startServer = true
@@ -131,6 +133,33 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 
 }
 
+// Get memory usage of the nomad client node.
+func getMemoryStats() {
+	hc := &types.HealthCheck{}
+	hc.Type = "MemoryUnderPressure"
+
+	memoryStats, err := collectMemoryStats()
+	if err != nil {
+		hc.Result = "true"
+		hc.Message = err.Error()
+	} else {
+		availableMemory := units.HumanSize(float64(memoryStats.Available))
+		availableMemoryPercent := (float64(memoryStats.Available) / float64(memoryStats.Total)) * 100
+		totalMemory := units.HumanSize(float64(memoryStats.Total))
+		if math.Round(availableMemoryPercent) <= 20 {
+			hc.Result = "true"
+		} else {
+			hc.Result = "false"
+		}
+		hc.Message = fmt.Sprintf("%s memory available out of %s total memory", availableMemory, totalMemory)
+	}
+
+	mutex.Lock()
+	m[hc.Type] = hc
+	mutex.Unlock()
+}
+
+// Get disk usage of the nomad client node.
 func getDiskStats() {
 	hc := &types.HealthCheck{}
 	hc.Type = "DiskUnderPressure"
