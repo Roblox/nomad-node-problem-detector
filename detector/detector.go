@@ -6,10 +6,10 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,6 +17,12 @@ import (
 	types "github.com/nomad-node-problem-detector/types"
 	"github.com/urfave/cli/v2"
 )
+
+type Limits struct {
+	cpuLimit    string
+	memoryLimit string
+	diskLimit   string
+}
 
 var (
 	m        map[string]*types.HealthCheck
@@ -44,6 +50,24 @@ var DetectorCommand = &cli.Command{
 			Aliases: []string{"d"},
 			Usage:   "Location of health checks. Defaults to /var/lib/nnpd",
 		},
+		&cli.StringFlag{
+			Name:    "cpu-limit",
+			Aliases: []string{"cl"},
+			Value:   "85",
+			Usage:   "CPU threshold in percentage",
+		},
+		&cli.StringFlag{
+			Name:    "memory-limit",
+			Aliases: []string{"ml"},
+			Value:   "80",
+			Usage:   "Memory threshold in percentage",
+		},
+		&cli.StringFlag{
+			Name:    "disk-limit",
+			Aliases: []string{"dl"},
+			Value:   "90",
+			Usage:   "Disk threshold in percentage",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		return startNpdHttpServer(c)
@@ -62,13 +86,19 @@ func startNpdHttpServer(context *cli.Context) error {
 		nnpdRoot = rootDir
 	}
 
+	limits := &Limits{
+		cpuLimit:    context.String("cpu-limit"),
+		memoryLimit: context.String("memory-limit"),
+		diskLimit:   context.String("disk-limit"),
+	}
+
 	nomadAllocDir := os.Getenv("NOMAD_ALLOC_DIR")
 	if nomadAllocDir != "" {
 		nnpdRoot = nomadAllocDir + nnpdRoot
 	}
 
 	done := make(chan bool, 1)
-	go collect(done, detectorCycleTime)
+	go collect(done, detectorCycleTime, limits)
 	<-done
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +133,7 @@ func readConfig(configPath string, configFile interface{}) error {
 	return json.Unmarshal(data, configFile)
 }
 
-func collect(done chan bool, detectorCycleTime time.Duration) {
+func collect(done chan bool, detectorCycleTime time.Duration, limits *Limits) {
 	startServer := false
 	configPath := nnpdRoot + "/config.json"
 
@@ -114,6 +144,24 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 		log.Fatal(err)
 	}
 
+	cpuLimit, err := strconv.ParseFloat(limits.cpuLimit, 64)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error in parsing --cpu-limit: %s", err.Error())
+		log.Fatal(errMsg)
+	}
+
+	memoryLimit, err := strconv.ParseFloat(limits.memoryLimit, 64)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error in parsing --memory-limit: %s", err.Error())
+		log.Fatal(errMsg)
+	}
+
+	diskLimit, err := strconv.ParseFloat(limits.diskLimit, 64)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error in parsing --disk-limit: %s", err.Error())
+		log.Fatal(errMsg)
+	}
+
 	for {
 		for _, cfg := range configFile {
 			wg.Add(1)
@@ -121,9 +169,9 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 		}
 		wg.Wait()
 
-		getCPUStats()
-		getMemoryStats()
-		getDiskStats()
+		getCPUStats(cpuLimit)
+		getMemoryStats(memoryLimit)
+		getDiskStats(diskLimit)
 
 		if !startServer {
 			startServer = true
@@ -135,7 +183,7 @@ func collect(done chan bool, detectorCycleTime time.Duration) {
 }
 
 // Get CPU usage of the nomad client node.
-func getCPUStats() {
+func getCPUStats(cpuLimit float64) {
 	hc := &types.HealthCheck{}
 	hc.Type = "CPUUnderPressure"
 
@@ -143,7 +191,7 @@ func getCPUStats() {
 	if err != nil {
 		hc.Result = "true"
 		hc.Message = err.Error()
-	} else if math.Round(cpuStats.User) >= 85 {
+	} else if cpuStats.User >= cpuLimit {
 		hc.Result = "true"
 		hc.Message = fmt.Sprintf("CPU usage: %f %%", cpuStats.User)
 	} else {
@@ -157,9 +205,11 @@ func getCPUStats() {
 }
 
 // Get memory usage of the nomad client node.
-func getMemoryStats() {
+func getMemoryStats(memoryLimit float64) {
 	hc := &types.HealthCheck{}
 	hc.Type = "MemoryUnderPressure"
+
+	memoryAvailableLimit := (100 - memoryLimit)
 
 	memoryStats, err := collectMemoryStats()
 	if err != nil {
@@ -169,7 +219,7 @@ func getMemoryStats() {
 		availableMemory := units.HumanSize(float64(memoryStats.Available))
 		availableMemoryPercent := (float64(memoryStats.Available) / float64(memoryStats.Total)) * 100
 		totalMemory := units.HumanSize(float64(memoryStats.Total))
-		if math.Round(availableMemoryPercent) <= 20 {
+		if availableMemoryPercent <= memoryAvailableLimit {
 			hc.Result = "true"
 		} else {
 			hc.Result = "false"
@@ -183,7 +233,7 @@ func getMemoryStats() {
 }
 
 // Get disk usage of the nomad client node.
-func getDiskStats() {
+func getDiskStats(diskLimit float64) {
 	hc := &types.HealthCheck{}
 	hc.Type = "DiskUnderPressure"
 
@@ -191,7 +241,7 @@ func getDiskStats() {
 	if err != nil {
 		hc.Result = "true"
 		hc.Message = err.Error()
-	} else if math.Round(diskStats.UsedPercent) >= 90 {
+	} else if diskStats.UsedPercent >= diskLimit {
 		hc.Result = "true"
 		hc.Message = fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent)
 	} else {
