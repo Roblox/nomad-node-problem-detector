@@ -235,7 +235,7 @@ func getMemoryStats(memoryLimit float64) {
 // Get disk usage of the nomad client node.
 func getDiskStats(diskLimit float64) {
 	hc := &types.HealthCheck{}
-	hc.Type = "DiskUnderPressure"
+	hc.Type = "DiskUsageHigh"
 
 	diskStats, err := collectDiskStats()
 	if err != nil {
