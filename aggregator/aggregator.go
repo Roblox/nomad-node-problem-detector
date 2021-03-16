@@ -214,7 +214,6 @@ func flipPause(sigs chan os.Signal) {
 			} else {
 				log.Info("Received signal SIGUSR1, unpausing aggregator.")
 			}
-		default:
 		}
 	}
 }
