@@ -143,7 +143,12 @@ func aggregate(context *cli.Context) error {
 			stateChanged := false
 
 			for _, curr := range current {
-				if curr.Result != "Healthy" {
+				// Default CPU, memory and disk checks are represented with
+				// boolean (true/false). curr.Result = true for CPUUnderPressure
+				// or MemoryUnderPressure or DiskUsageHigh tells that the system
+				// is under CPU/memory/disk pressure and should be taken out of
+				// eligibility.
+				if curr.Result == "Unhealthy" || curr.Result == "true" {
 					errMsg := fmt.Sprintf("Node %s: %s is %s\n", node.Address, curr.Type, curr.Result)
 					log.Warning(errMsg)
 					nodeHealthy = false
@@ -214,7 +219,6 @@ func flipPause(sigs chan os.Signal) {
 			} else {
 				log.Info("Received signal SIGUSR1, unpausing aggregator.")
 			}
-		default:
 		}
 	}
 }

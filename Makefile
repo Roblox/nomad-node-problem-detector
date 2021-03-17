@@ -6,6 +6,7 @@ ifndef $(GOLANG)
 endif
 
 export GO111MODULE=on
+export GOOS=linux
 
 default: build
 
