@@ -107,6 +107,10 @@ func startNpdHttpServer(context *cli.Context) error {
 	http.HandleFunc("/v1/health/", healthCheckHandler)
 	http.HandleFunc("/v1/nodehealth/", nodeHealthHandler)
 
+	log.Info(fmt.Sprintf("detector started with --cpu-limit: %s%%", limits.cpuLimit))
+	log.Info(fmt.Sprintf("detector started with --memory-limit: %s%%", limits.memoryLimit))
+	log.Info(fmt.Sprintf("detector started with --disk-limit: %s%%", limits.diskLimit))
+
 	log.Info("nomad node problem detector ready to receive requests.")
 	if err := http.ListenAndServe(":8083", nil); err != nil {
 		return err
