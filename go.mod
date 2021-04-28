@@ -13,5 +13,7 @@ require (
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/shirou/gopsutil v3.21.2+incompatible
 	github.com/sirupsen/logrus v1.7.0
+	github.com/stretchr/testify v1.5.1
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/sys v0.0.0-20200316230553-a7d97aace0b0 // indirect
 )
