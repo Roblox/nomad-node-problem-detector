@@ -46,3 +46,21 @@ func TestReadValidConfig(t *testing.T) {
 		assert.Equal(t, val.HealthCheck, inputConfig[index].HealthCheck, "Health check should be equal")
 	}
 }
+
+// TestCPUStatsUnderLimit test if CPU is under limit.
+func TestCPUStatsUnderLimit(t *testing.T) {
+	expected := &types.HealthCheck{
+		Type:   "CPUUnderPressure",
+		Result: "false",
+	}
+
+	cpuLimit := 50.0
+	getCPUStats(cpuLimit)
+
+	actual := m[expected.Type]
+	delete(m, expected.Type)
+
+	assert.Equal(t, actual.Type, expected.Type, "Type should be equal")
+	assert.Equal(t, actual.Result, expected.Result, "Result should be equal")
+	assert.Contains(t, actual.Message, "CPU usage", "Message should contain CPU usage")
+}
