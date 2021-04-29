@@ -93,3 +93,32 @@ func TestMemoryStats(t *testing.T) {
 		assert.Contains(t, actual.Message, "memory available out of", "Message should contain \"memory available out of\" string")
 	}
 }
+
+// TestDiskStats test if disk is under/over limit.
+func TestDiskStats(t *testing.T) {
+	type test struct {
+		expected  *types.HealthCheck
+		diskLimit float64
+	}
+
+	tests := []test{
+		{&types.HealthCheck{
+			Type:   "DiskUsageHigh",
+			Result: "false",
+		}, 60},
+		{&types.HealthCheck{
+			Type:   "DiskUsageHigh",
+			Result: "true",
+		}, 2},
+	}
+
+	for _, tc := range tests {
+		getDiskStats(tc.diskLimit)
+		actual := m[tc.expected.Type]
+		delete(m, tc.expected.Type)
+
+		assert.Equal(t, actual.Type, tc.expected.Type, "Type should be equal")
+		assert.Equal(t, actual.Result, tc.expected.Result, "Result should be equal")
+		assert.Contains(t, actual.Message, "disk usage is", "Message should contain \"disk usage is\" string")
+	}
+}
