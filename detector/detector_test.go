@@ -64,3 +64,32 @@ func TestCPUStatsUnderLimit(t *testing.T) {
 	assert.Equal(t, actual.Result, expected.Result, "Result should be equal")
 	assert.Contains(t, actual.Message, "CPU usage", "Message should contain CPU usage")
 }
+
+// TestMemoryStats test if memory is under/over limit.
+func TestMemoryStats(t *testing.T) {
+	type test struct {
+		expected    *types.HealthCheck
+		memoryLimit float64
+	}
+
+	tests := []test{
+		{&types.HealthCheck{
+			Type:   "MemoryUnderPressure",
+			Result: "false",
+		}, 60},
+		{&types.HealthCheck{
+			Type:   "MemoryUnderPressure",
+			Result: "true",
+		}, 5},
+	}
+
+	for _, tc := range tests {
+		getMemoryStats(tc.memoryLimit)
+		actual := m[tc.expected.Type]
+		delete(m, tc.expected.Type)
+
+		assert.Equal(t, actual.Type, tc.expected.Type, "Type should be equal")
+		assert.Equal(t, actual.Result, tc.expected.Result, "Result should be equal")
+		assert.Contains(t, actual.Message, "memory available out of", "Message should contain \"memory available out of\" string")
+	}
+}
