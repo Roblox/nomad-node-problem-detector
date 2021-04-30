@@ -125,6 +125,54 @@ func TestDiskStats(t *testing.T) {
 	}
 }
 
+// TestNodeHealthEndpoint test the /v1/nodehealth/ HTTP endpoint.
+func TestNodeHealthEndpoint(t *testing.T) {
+	// Set the contents of global map (m) which will be returned when /v1/nodehealth/
+	// endpoint is hit.
+	m["docker"] = &types.HealthCheck{
+		Type:    "docker",
+		Result:  "Healthy",
+		Message: "docker daemon is healthy",
+	}
+	m["portworx"] = &types.HealthCheck{
+		Type:    "portworx",
+		Result:  "Unhealthy",
+		Message: "portworx is unhealthy",
+	}
+
+	req, err := http.NewRequest("POST", "/v1/nodehealth/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(nodeHealthHandler)
+	handler.ServeHTTP(rr, req)
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("nodeHealthHandler returned incorrect status code: got %v, expected %v", status, http.StatusOK)
+	}
+
+	actual := []types.HealthCheck{}
+	if err := json.Unmarshal([]byte(rr.Body.String()), &actual); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, hc := range actual {
+		if hc.Type == "docker" {
+			assert.Equal(t, hc.Type, m["docker"].Type, "Type should be equal")
+			assert.Equal(t, hc.Result, m["docker"].Result, "Result should be equal")
+			assert.Equal(t, hc.Message, m["docker"].Message, "Message should be equal")
+		} else if hc.Type == "portworx" {
+			assert.Equal(t, hc.Type, m["portworx"].Type, "Type should be equal")
+			assert.Equal(t, hc.Result, m["portworx"].Result, "Result should be equal")
+			assert.Equal(t, hc.Message, m["portworx"].Message, "Message should be equal")
+		}
+	}
+	delete(m, "docker")
+	delete(m, "portworx")
+}
+
 // TestHealthEndpoint test the /v1/health/ HTTP endpoint.
 func TestHealthEndpoint(t *testing.T) {
 	req, err := http.NewRequest("POST", "/v1/health/", nil)
