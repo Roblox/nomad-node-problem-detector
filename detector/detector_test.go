@@ -3,6 +3,8 @@ package detector
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -120,5 +122,21 @@ func TestDiskStats(t *testing.T) {
 		assert.Equal(t, actual.Type, tc.expected.Type, "Type should be equal")
 		assert.Equal(t, actual.Result, tc.expected.Result, "Result should be equal")
 		assert.Contains(t, actual.Message, "disk usage is", "Message should contain \"disk usage is\" string")
+	}
+}
+
+// TestHealthEndpoint test the /v1/health/ HTTP endpoint.
+func TestHealthEndpoint(t *testing.T) {
+	req, err := http.NewRequest("POST", "/v1/health/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(healthCheckHandler)
+	handler.ServeHTTP(rr, req)
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("healthCheckHandler returned incorrect status code: got %v, expected %v", status, http.StatusOK)
 	}
 }
