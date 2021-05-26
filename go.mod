@@ -4,16 +4,16 @@ go 1.15
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
-	github.com/docker/go-units v0.3.3
+	github.com/docker/go-units v0.4.0
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
+	github.com/hashicorp/nomad v1.0.4
 	github.com/hashicorp/nomad/api v0.0.0-20210128220232-4b7ee2269213
 	github.com/mackerelio/go-osstat v0.1.0
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/shirou/gopsutil v3.21.2+incompatible
 	github.com/sirupsen/logrus v1.7.0
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/sys v0.0.0-20200316230553-a7d97aace0b0 // indirect
 )
