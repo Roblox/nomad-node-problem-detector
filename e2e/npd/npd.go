@@ -1,6 +1,9 @@
-package e2etests
+package npd
 
 import (
+	"testing"
+
+	"github.com/hashicorp/nomad/api"
 	"github.com/hashicorp/nomad/e2e/e2eutil"
 	"github.com/hashicorp/nomad/e2e/framework"
 	"github.com/hashicorp/nomad/helper/uuid"
@@ -27,15 +30,20 @@ func (tc *NPDTest) BeforeAll(f *framework.F) {
 	e2eutil.WaitForNodesReady(f.T(), tc.Nomad(), 1)
 }
 
-func (tc *NPDTest) TestRedisDeployment(f *framework.F) {
+func (tc *NPDTest) TestNpdDeployment(f *framework.F) {
 	t := f.T()
 	nomadClient := tc.Nomad()
+
+	// Deploy detector and aggregator jobs.
+	tc.deployJob(t, nomadClient, "detector", "npd/jobs/detector.nomad")
+	tc.deployJob(t, nomadClient, "aggregator", "npd/jobs/aggregator.nomad")
+}
+
+func (tc *NPDTest) deployJob(t *testing.T, nomadClient *api.Client, jobName, jobPath string) {
 	uuid := uuid.Generate()
-	jobID := "deployment" + uuid[0:8]
+	jobID := jobName + "-" + uuid[0:8]
 	tc.jobIDs = append(tc.jobIDs, jobID)
-	e2eutil.RegisterAndWaitForAllocs(t, nomadClient, "npd/redis/redis.nomad", jobID, "")
-	ds := e2eutil.DeploymentsForJob(t, nomadClient, jobID)
-	require.Equal(t, 1, len(ds))
+	e2eutil.RegisterAndWaitForAllocs(t, nomadClient, jobPath, jobID, "")
 
 	jobs := nomadClient.Jobs()
 	allocs, _, err := jobs.Allocations(jobID, true, nil)
