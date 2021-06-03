@@ -61,13 +61,10 @@ func (tc *NPDTest) TestMarkNodeIneligible(f *framework.F) {
 	require.NoError(t, err)
 
 	srcFile := fmt.Sprintf("/tmp/nomad/data/%s/alloc/var/lib/nnpd/docker/docker_health_check.sh", allocs[0].ID)
-
 	destDir, err := ioutil.TempDir("", "nnpd-")
 	require.NoError(t, err)
 	defer os.RemoveAll(destDir)
-
 	destFile := filepath.Join(destDir, "docker_health_check.sh")
-
 	err = os.Rename(srcFile, destFile)
 	require.NoError(t, err)
 
