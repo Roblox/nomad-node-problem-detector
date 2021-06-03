@@ -56,7 +56,7 @@ func TestCPUStatsUnderLimit(t *testing.T) {
 		Result: "false",
 	}
 
-	cpuLimit := 50.0
+	cpuLimit := 70.0
 	getCPUStats(cpuLimit)
 
 	actual := m[expected.Type]

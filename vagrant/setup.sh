@@ -14,7 +14,7 @@ Description=nomad server + client (dev)
 Documentation=https://nomadproject.io
 After=network.target
 [Service]
-ExecStart=/usr/bin/nomad agent -dev -bind=0.0.0.0
+ExecStart=/usr/bin/nomad agent -dev -bind=0.0.0.0 -alloc-dir=/tmp/nomad/data
 KillMode=process
 Delegate=yes
 LimitNOFILE=1048576

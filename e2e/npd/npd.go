@@ -1,6 +1,9 @@
 package npd
 
 import (
+	"fmt"
+	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/nomad/api"
@@ -28,15 +31,53 @@ func init() {
 func (tc *NPDTest) BeforeAll(f *framework.F) {
 	e2eutil.WaitForLeader(f.T(), tc.Nomad())
 	e2eutil.WaitForNodesReady(f.T(), tc.Nomad(), 1)
-}
 
-func (tc *NPDTest) TestNpdDeployment(f *framework.F) {
 	t := f.T()
 	nomadClient := tc.Nomad()
 
 	// Deploy detector and aggregator jobs.
 	tc.deployJob(t, nomadClient, "detector", "npd/jobs/detector.nomad")
 	tc.deployJob(t, nomadClient, "aggregator", "npd/jobs/aggregator.nomad")
+}
+
+func (tc *NPDTest) TestMarkNodeIneligible(f *framework.F) {
+	t := f.T()
+	nomadClient := tc.Nomad()
+	jobs := nomadClient.Jobs()
+
+	var detectorJobID string
+	for _, id := range tc.jobIDs {
+		if strings.Contains(id, "detector") {
+			detectorJobID = id
+			break
+		}
+	}
+
+	allocs, _, err := jobs.Allocations(detectorJobID, true, nil)
+	require.NoError(t, err)
+
+	var allocID string
+	for _, alloc := range allocs {
+		allocID = alloc.ID
+	}
+
+	file := fmt.Sprintf("/tmp/nomad/data/%s/alloc/var/lib/nnpd/docker/docker_health_check.sh", allocID)
+	content, err := ioutil.ReadFile(file)
+	require.NoError(t, err)
+	fmt.Println(string(content))
+
+}
+
+func (tc *NPDTest) AfterAll(f *framework.F) {
+	nomadClient := tc.Nomad()
+	jobs := nomadClient.Jobs()
+	// Stop all jobs in test
+	for _, id := range tc.jobIDs {
+		jobs.Deregister(id, true, nil)
+	}
+	tc.jobIDs = []string{}
+	// Garbage collect
+	nomadClient.System().GarbageCollect()
 }
 
 func (tc *NPDTest) deployJob(t *testing.T, nomadClient *api.Client, jobName, jobPath string) {

@@ -45,6 +45,7 @@ Vagrant.configure("2") do |config|
     fi
 
     # Run setup
+    chown -R 1000:1000 /home/vagrant/go
     cd /home/vagrant/go/src/github.com/Roblox/nomad-node-problem-detector/vagrant
     ./setup.sh
   SHELL
