@@ -3,13 +3,17 @@ package npd
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/nomad/api"
 	"github.com/hashicorp/nomad/e2e/e2eutil"
 	"github.com/hashicorp/nomad/e2e/framework"
 	"github.com/hashicorp/nomad/helper/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,16 +60,44 @@ func (tc *NPDTest) TestMarkNodeIneligible(f *framework.F) {
 	allocs, _, err := jobs.Allocations(detectorJobID, true, nil)
 	require.NoError(t, err)
 
-	var allocID string
-	for _, alloc := range allocs {
-		allocID = alloc.ID
-	}
+	srcFile := fmt.Sprintf("/tmp/nomad/data/%s/alloc/var/lib/nnpd/docker/docker_health_check.sh", allocs[0].ID)
 
-	file := fmt.Sprintf("/tmp/nomad/data/%s/alloc/var/lib/nnpd/docker/docker_health_check.sh", allocID)
-	content, err := ioutil.ReadFile(file)
+	destDir, err := ioutil.TempDir("", "nnpd-")
 	require.NoError(t, err)
-	fmt.Println(string(content))
+	defer os.RemoveAll(destDir)
 
+	destFile := filepath.Join(destDir, "docker_health_check.sh")
+
+	err = os.Rename(srcFile, destFile)
+	require.NoError(t, err)
+
+	content := []byte("echo \"docker daemon is unhealthy.\"\nexit 1\n")
+	err = ioutil.WriteFile(srcFile, content, 0755)
+	require.NoError(t, err)
+
+	// Sleep for 6 seconds. This will allow aggregator to pick up the
+	// updated (unhealthy) docker health checks.
+	time.Sleep(6 * time.Second)
+
+	// npd aggregator should mark the node as ineligible, since docker daemon is unhealthy.
+	nh := nomadClient.Nodes()
+	nodes, _, err := nh.List(nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, nodes[0].SchedulingEligibility, "ineligible", "Scheduling Eligibility should be false.")
+
+	// Flip docker health check back to healthy.
+	err = os.Rename(destFile, srcFile)
+	require.NoError(t, err)
+
+	// Sleep for 6 seconds. This will allow aggregator to pick up the
+	// updated (healthy) docker health checks.
+	time.Sleep(6 * time.Second)
+
+	nodes, _, err = nh.List(nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, nodes[0].SchedulingEligibility, "eligible", "Scheduling Eligibility should be true.")
 }
 
 func (tc *NPDTest) AfterAll(f *framework.F) {
