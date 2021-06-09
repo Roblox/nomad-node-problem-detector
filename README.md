@@ -1,5 +1,5 @@
 # Nomad-node-problem-detector (NNPD)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Roblox/nomad-node-problem-detector/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Roblox/nomad-node-problem-detector/blob/main/LICENSE)
 [![Release](https://img.shields.io/badge/version-0.1-blue)](https://github.com/Roblox/nomad-node-problem-detector/releases/tag/v0.1)
 
 "A distributed system is a collection of autonomous compute nodes (sometimes unreliable) that appears to it's users
