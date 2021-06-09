@@ -195,6 +195,6 @@ This will destroy your vagrant VM.
 
 ## License
 
-Copyright 2020 Roblox Corporation
+Copyright 2021 Roblox Corporation
 
 Licensed under the Apache License, Version 2.0 (the "License"). For more information read the [License](LICENSE).
