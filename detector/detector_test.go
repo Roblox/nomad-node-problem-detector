@@ -73,7 +73,7 @@ func TestCPUStatsUnderLimit(t *testing.T) {
 		Result: "false",
 	}
 
-	cpuLimit := 70.0
+	cpuLimit := 75.0
 	getCPUStats(cpuLimit)
 
 	actual := m[expected.Type]
@@ -124,7 +124,7 @@ func TestDiskStats(t *testing.T) {
 		{&types.HealthCheck{
 			Type:   "DiskUsageHigh",
 			Result: "false",
-		}, 60},
+		}, 85},
 		{&types.HealthCheck{
 			Type:   "DiskUsageHigh",
 			Result: "true",
