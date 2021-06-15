@@ -54,14 +54,14 @@ var ConfigCommand = &cli.Command{
 			},
 		},
 		{
-			Name:  "upload",
-			Usage: "Upload the config and the health checks into docker registry",
+			Name:  "build",
+			Usage: "Copy your health checks into a docker image",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "image",
 					Aliases:  []string{"i"},
 					Required: true,
-					Usage:    "Fully qualified docker image, that will be pushed to the registry",
+					Usage:    "Fully qualified docker image name",
 				},
 				&cli.StringFlag{
 					Name:    "root-dir",
@@ -70,7 +70,7 @@ var ConfigCommand = &cli.Command{
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return uploadConfig(c)
+				return buildConfig(c)
 			},
 		},
 	},
@@ -81,10 +81,9 @@ var steps = []string{
 	"copying health scripts",
 	"creating tarball",
 	"building docker image",
-	"uploading docker image",
 }
 
-func uploadConfig(context *cli.Context) error {
+func buildConfig(context *cli.Context) error {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -103,19 +102,19 @@ func uploadConfig(context *cli.Context) error {
 	}
 
 	if dockerfilePath != "nomad-node-problem-detector/build" {
-		return fmt.Errorf("npd config upload must be run from project root build directory: nomad-node-problem-detector/build")
+		return fmt.Errorf("npd config build must be run from project root build directory: nomad-node-problem-detector/build")
 	}
 
 	configFilePath := rootDir + "/config.json"
 	if _, err := os.Stat(configFilePath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("config.json missing in --root-dir: %s. npd config upload -h for help\n", rootDir)
+			return fmt.Errorf("config.json missing in --root-dir: %s. npd config build -h for help\n", rootDir)
 		}
 		return err
 	}
 
-	uploadCmd := pwd + "/" + "upload.sh"
-	cmd := exec.Command(uploadCmd, image, rootDir)
+	buildCmd := pwd + "/" + "build.sh"
+	cmd := exec.Command(buildCmd, image, rootDir)
 
 	var wg sync.WaitGroup
 	uiprogress.Start()
@@ -136,11 +135,11 @@ func uploadConfig(context *cli.Context) error {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error in uploading docker image %s: %s: %s\n", image, err.Error(), string(output))
+		return fmt.Errorf("Error in building docker image %s: %s: %s\n", image, err.Error(), string(output))
 	}
 
 	wg.Wait()
-	fmt.Printf("%s build and uploaded successfully.\n", image)
+	fmt.Printf("%s build successfully.\n", image)
 	return nil
 }
 
