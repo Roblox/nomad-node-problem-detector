@@ -163,11 +163,11 @@ There are two subcommands in `npd config` command:
 | :---: | :---: | :---: | :---: | :--- |
 | **root-dir** | string | no | `pwd - present working directory` | Location of health checks |
 
-- **npd config upload** - Upload the config and the health checks into docker registry.
+- **npd config build** - Copy your health checks into a docker image.
 
 | Option | Type | Required | Default | Description |
 | :---: | :---: | :---: | :---: | :--- |
-| **image** | string | yes | `N/A` | Fully qualified docker image, that will be pushed to the registry |
+| **image** | string | yes | `N/A` | Fully qualified docker image name |
 | **root-dir** | string | no | `pwd - present working directory` | Location of health checks |
 
 ## Tests
