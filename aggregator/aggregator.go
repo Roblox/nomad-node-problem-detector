@@ -44,6 +44,12 @@ var AggregatorCommand = &cli.Command{
 			Usage:   "Time (in seconds) to wait between each aggregation cycle",
 		},
 		&cli.StringFlag{
+			Name:    "detector-port",
+			Aliases: []string{"p"},
+			Value:   ":8083",
+			Usage:   "Detector HTTP server port",
+		},
+		&cli.StringFlag{
 			Name:    "nomad-server",
 			Aliases: []string{"s"},
 			Value:   "http://localhost:4646",
@@ -68,6 +74,8 @@ func aggregate(context *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	detectorPort := context.String("detector-port")
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGUSR1)
@@ -95,7 +103,7 @@ func aggregate(context *cli.Context) error {
 		}
 
 		for _, node := range nodes {
-			npdServer := fmt.Sprintf("http://%s:8083", node.Address)
+			npdServer := fmt.Sprintf("http://%s%s", node.Address, detectorPort)
 
 			npdActive, err := isNpdServerActive(npdServer)
 			if err != nil {
