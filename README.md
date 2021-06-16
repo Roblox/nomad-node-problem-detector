@@ -103,7 +103,7 @@ $ nomad job status detector
 
 ### Deploy aggregator
 
-Official aggregator docker image: `shm32/npd-aggregator:1.0.4`<br/>
+Official aggregator docker image: `shm32/npd-aggregator:1.0.5`<br/>
 You can find the `aggregator` nomad job spec [`here`](https://github.com/Roblox/nomad-node-problem-detector/blob/main/deploy/aggregator.nomad)
 
 ```
@@ -137,6 +137,7 @@ So, you were able to deploy `detector` and `aggregator` successfully. We have NN
 | Option | Type | Required | Default | Description |
 | :---: | :---: | :---: | :---: | :--- |
 | **aggregation-cycle-time** | string | no | `15s` | Time (in seconds) to wait between each aggregation cycle. |
+| **detector-port** | string | no | `:8083` | Detector HTTP server port |
 | **nomad-server** | string | no | `http://localhost:4646` | HTTP API address of a Nomad server or agent. |
 
 **Detector** - Run nomad node problem detector HTTP server
@@ -146,7 +147,7 @@ So, you were able to deploy `detector` and `aggregator` successfully. We have NN
 | Option | Type | Required | Default | Description |
 | :---: | :---: | :---: | :---: | :--- |
 | **detector-cycle-time** | string | no | `3s` | Time (in seconds) to wait between each detector cycle. |
-| **port** | string | no | `:8083` | Address to listen on for detector HTTP server. |
+| **port** | string | no | `:8083` | Address to listen on for detector HTTP server.<br/> **NOTE** If your `detector` is listening on a non-default port, don't forget to start your `aggregator` with `--detector-port` flag. This will inform `aggregator` which `detector` port to reach out to. |
 | **root-dir** | string | no | `/var/lib/nnpd` | Location of health checks. |
 | **cpu-limit** | string | no | `85` | CPU threshold in percentage |
 | **memory-limit** | string | no | `80` | Memory threshold in percentage |
