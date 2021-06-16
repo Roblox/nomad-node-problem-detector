@@ -63,6 +63,12 @@ var DetectorCommand = &cli.Command{
 			Usage:   "Time (in seconds) to wait between each detector cycle",
 		},
 		&cli.StringFlag{
+			Name:    "port",
+			Aliases: []string{"p"},
+			Value:   ":8083",
+			Usage:   "Address to listen on for detector HTTP server",
+		},
+		&cli.StringFlag{
 			Name:    "root-dir",
 			Aliases: []string{"d"},
 			Usage:   "Location of health checks. Defaults to /var/lib/nnpd",
@@ -128,8 +134,9 @@ func startNpdHttpServer(context *cli.Context) error {
 	log.Info(fmt.Sprintf("detector started with --memory-limit: %s%%", limits.memoryLimit))
 	log.Info(fmt.Sprintf("detector started with --disk-limit: %s%%", limits.diskLimit))
 
-	log.Info("nomad node problem detector ready to receive requests.")
-	if err := http.ListenAndServe(":8083", nil); err != nil {
+	port := context.String("port")
+	log.Info(fmt.Sprintf("nomad node problem detector ready to receive requests. Listening on %s", port))
+	if err := http.ListenAndServe(port, nil); err != nil {
 		return err
 	}
 	return nil
