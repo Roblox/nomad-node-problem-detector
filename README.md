@@ -146,6 +146,7 @@ So, you were able to deploy `detector` and `aggregator` successfully. We have NN
 | Option | Type | Required | Default | Description |
 | :---: | :---: | :---: | :---: | :--- |
 | **detector-cycle-time** | string | no | `3s` | Time (in seconds) to wait between each detector cycle. |
+| **port** | string | no | `:8083` | Address to listen on for detector HTTP server. |
 | **root-dir** | string | no | `/var/lib/nnpd` | Location of health checks. |
 | **cpu-limit** | string | no | `85` | CPU threshold in percentage |
 | **memory-limit** | string | no | `80` | Memory threshold in percentage |
