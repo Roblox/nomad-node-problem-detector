@@ -174,7 +174,7 @@ There are two subcommands in `npd config` command:
 
 ## Tests
 
-`vagrant up` will start a local vagrant VM `nnpd`, which has all the required dependencies (e.g. nomad, golang) already installed. It provides a single node nomad dev cluster with both `detector` and `aggregator` deployed.
+`vagrant up` will start a local vagrant VM `nnpd`, which has all the dependencies (e.g. nomad, golang) already installed, which are required to run the integration tests.
 
 To run the tests locally in the vagrant VM.
 
