@@ -19,6 +19,7 @@ package detector
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -27,6 +28,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,9 +44,11 @@ type Limits struct {
 }
 
 var (
-	m        map[string]*types.HealthCheck
-	mutex    = &sync.Mutex{}
-	nnpdRoot = "/var/lib/nnpd"
+	m                 map[string]*types.HealthCheck
+	mutex             = &sync.Mutex{}
+	nnpdRoot          = "/var/lib/nnpd"
+	detectorHTTPToken string
+	auth              bool
 )
 
 //Todo: Add comments to describe locking/contention.
@@ -67,6 +71,10 @@ var DetectorCommand = &cli.Command{
 			Aliases: []string{"p"},
 			Value:   ":8083",
 			Usage:   "Address to listen on for detector HTTP server",
+		},
+		&cli.BoolFlag{
+			Name:  "auth",
+			Usage: "If set to true, aggregator must set DETECTOR_HTTP_TOKEN in request header, when accessing the HTTP endpoints.",
 		},
 		&cli.StringFlag{
 			Name:    "root-dir",
@@ -102,6 +110,14 @@ func startNpdHttpServer(context *cli.Context) error {
 	detectorCycleTime, err := time.ParseDuration(context.String("detector-cycle-time"))
 	if err != nil {
 		return err
+	}
+
+	auth = context.Bool("auth")
+	if auth {
+		detectorHTTPToken = os.Getenv("DETECTOR_HTTP_TOKEN")
+		if detectorHTTPToken == "" {
+			return fmt.Errorf("DETECTOR_HTTP_TOKEN environment variable is missing, with --auth enabled.")
+		}
 	}
 
 	rootDir := context.String("root-dir")
@@ -308,13 +324,43 @@ func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
 	mutex.Unlock()
 }
 
+func validateAuthorizationToken(w http.ResponseWriter, r *http.Request) error {
+	response := r.Header.Get("Authorization")
+	tokens := strings.Split(response, " ")
+	if len(tokens) < 2 {
+		return fmt.Errorf("Malformed or missing token in http request header\n")
+	}
+
+	requestToken := tokens[1]
+	token := base64.StdEncoding.EncodeToString([]byte(detectorHTTPToken))
+
+	if token != requestToken {
+		return fmt.Errorf("Invalid token in http request header\n")
+	}
+	return nil
+}
+
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Calling /v1/health/")
+	if auth {
+		if err := validateAuthorizationToken(w, r); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(err.Error()))
+			return
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
 func nodeHealthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Calling /v1/nodehealth/")
+	if auth {
+		if err := validateAuthorizationToken(w, r); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(err.Error()))
+			return
+		}
+	}
 
 	res := []types.HealthCheck{}
 
