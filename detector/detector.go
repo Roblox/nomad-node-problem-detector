@@ -74,7 +74,7 @@ var DetectorCommand = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "auth",
-			Usage: "If set to true, aggregator must set DETECTOR_HTTP_TOKEN in request header, when accessing the HTTP endpoints.",
+			Usage: "If set to true, detector must set DETECTOR_HTTP_TOKEN=<your_token> as an environment variable when starting detector",
 		},
 		&cli.StringFlag{
 			Name:    "root-dir",

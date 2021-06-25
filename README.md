@@ -128,6 +128,28 @@ So, you were able to deploy `detector` and `aggregator` successfully. We have NN
 **hint:** Use `npd config generate --root-dir <dir>` to update your master config.
 - Follow these [`instructions`](https://github.com/Roblox/nomad-node-problem-detector/wiki/How-to-deploy-detector-using-docker-prestart-hook) to upgrade your `detector` using `docker prestart hook mode`.
 
+## Authentication
+
+You can enable a token based `authentication` for detector HTTP endpoints (`/v1/health/` and `/v1/nodehealth/`) by starting the `detector` with `--auth` flag.
+
+`DETECTOR_HTTP_TOKEN=<your_token>` environment variable **must** be set when deploying `aggregator` and `detector` jobs.<br/>
+`aggregator` will use `DETECTOR_HTTP_TOKEN` to set the token in the authorization header when making the HTTP requests.<br/>
+`detector` will use `DETECTOR_HTTP_TOKEN` for validating against the incoming token in the authorization header.
+
+```
+$ DETECTOR_HTTP_TOKEN=<your_token> npd detector --auth
+```
+
+The token is `base64` encoded, so if you are trying things out using `curl`, you need to encode the token first before passing it in the authorization header.
+
+```
+$ echo -n <your_token> | base64
+$ Note down your base64 encoded token.
+$ curl -H "Authorization: Basic <base64_encoded_token>" http://localhost:8083/v1/nodehealth/
+```
+
+**NOTE:** In order to keep `NNPD` performant and lightweight, TLS is not support at this point.
+
 ## Commands and Flags
 
 **Aggregator** - Run npd in aggregator mode
@@ -147,11 +169,12 @@ So, you were able to deploy `detector` and `aggregator` successfully. We have NN
 | Option | Type | Required | Default | Description |
 | :---: | :---: | :---: | :---: | :--- |
 | **detector-cycle-time** | string | no | `3s` | Time (in seconds) to wait between each detector cycle. |
-| **port** | string | no | `:8083` | Address to listen on for detector HTTP server.<br/> **NOTE** If your `detector` is listening on a non-default port, don't forget to start your `aggregator` with `--detector-port` flag. This will inform `aggregator` which `detector` port to reach out to. |
+| **port** | string | no | `:8083` | Address to listen on for detector HTTP server.<br/> **NOTE:** If your `detector` is listening on a non-default port, don't forget to start your `aggregator` with `--detector-port` flag. This will inform `aggregator` which `detector` port to reach out to. |
+| **auth** | bool | no | false | If set to true, `detector` must set `DETECTOR_HTTP_TOKEN=<your_token>` as an environment variable when starting `detector`. |
 | **root-dir** | string | no | `/var/lib/nnpd` | Location of health checks. |
-| **cpu-limit** | string | no | `85` | CPU threshold in percentage |
-| **memory-limit** | string | no | `80` | Memory threshold in percentage |
-| **disk-limit** | string | no | `90` | Disk threshold in percentage |
+| **cpu-limit** | string | no | `85` | CPU threshold in percentage. |
+| **memory-limit** | string | no | `80` | Memory threshold in percentage. |
+| **disk-limit** | string | no | `90` | Disk threshold in percentage. |
 
 **Config** - Run config and health checks related commands.
 
