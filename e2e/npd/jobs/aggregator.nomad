@@ -8,7 +8,7 @@ job "aggregator" {
 
       config {
 	network_mode = "host"
-	image = "shm32/npd-aggregator:1.0.4"
+	image = "shm32/npd-aggregator:1.0.6"
 	command = "npd"
 	args    = ["aggregator", "--aggregation-cycle-time=3s"]
       }

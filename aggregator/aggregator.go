@@ -18,6 +18,7 @@ limitations under the License.
 package aggregator
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -77,6 +78,8 @@ func aggregate(context *cli.Context) error {
 
 	detectorPort := context.String("detector-port")
 
+	authToken := os.Getenv("DETECTOR_HTTP_TOKEN")
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGUSR1)
 	go flipPause(sigs)
@@ -105,7 +108,7 @@ func aggregate(context *cli.Context) error {
 		for _, node := range nodes {
 			npdServer := fmt.Sprintf("http://%s%s", node.Address, detectorPort)
 
-			npdActive, err := isNpdServerActive(npdServer)
+			npdActive, err := isNpdServerActive(npdServer, authToken)
 			if err != nil {
 				errMsg := fmt.Sprintf("Node %s is unreachable, skipping node.", node.Address)
 				log.Warning(errMsg)
@@ -125,6 +128,11 @@ func aggregate(context *cli.Context) error {
 				errMsg := fmt.Sprintf("Error in building /v1/nodehealth/ HTTP request, skipping node %s\n", node.Address)
 				log.Warning(errMsg)
 				continue
+			}
+
+			if authToken != "" {
+				base64EncodedToken := base64.StdEncoding.EncodeToString([]byte(authToken))
+				req.Header.Set("Authorization", "Basic "+base64EncodedToken)
 			}
 
 			req.Header.Set("Content-Type", "application/json")
@@ -212,11 +220,16 @@ func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, el
 }
 
 // Check if Nomad node problem detector (nNPD) HTTP server is healthy and active.
-func isNpdServerActive(npdServer string) (bool, error) {
+func isNpdServerActive(npdServer, authToken string) (bool, error) {
 	url := npdServer + "/v1/health/"
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return false, err
+	}
+
+	if authToken != "" {
+		base64EncodedToken := base64.StdEncoding.EncodeToString([]byte(authToken))
+		req.Header.Set("Authorization", "Basic "+base64EncodedToken)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
