@@ -23,14 +23,13 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uiprogress/util/strutil"
+	build "github.com/nomad-node-problem-detector/build"
 	types "github.com/nomad-node-problem-detector/types"
 	"github.com/urfave/cli/v2"
 )
@@ -95,15 +94,6 @@ func buildConfig(context *cli.Context) error {
 	}
 
 	image := context.String("image")
-	pwdSlice := strings.Split(pwd, "/")
-	var dockerfilePath string
-	if len(pwdSlice) > 1 {
-		dockerfilePath = strings.Join(pwdSlice[len(pwdSlice)-2:], "/")
-	}
-
-	if dockerfilePath != "nomad-node-problem-detector/build" {
-		return fmt.Errorf("npd config build must be run from project root build directory: nomad-node-problem-detector/build")
-	}
 
 	configFilePath := rootDir + "/config.json"
 	if _, err := os.Stat(configFilePath); err != nil {
@@ -113,8 +103,9 @@ func buildConfig(context *cli.Context) error {
 		return err
 	}
 
-	buildCmd := pwd + "/" + "build.sh"
-	cmd := exec.Command(buildCmd, image, rootDir)
+	if err = build.BuildImage(image, rootDir); err != nil {
+		return err
+	}
 
 	var wg sync.WaitGroup
 	uiprogress.Start()
@@ -132,11 +123,6 @@ func buildConfig(context *cli.Context) error {
 			time.Sleep(time.Millisecond * time.Duration(rand.Intn(2000)))
 		}
 	}()
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Error in building docker image %s: %s: %s\n", image, err.Error(), string(output))
-	}
 
 	wg.Wait()
 	fmt.Printf("%s build successfully.\n", image)
