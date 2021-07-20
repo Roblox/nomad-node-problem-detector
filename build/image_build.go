@@ -96,8 +96,7 @@ func BuildImage(imageName, rootDir string) error {
 	}
 	defer imageBuildResponse.Body.Close()
 
-	_, err = io.Copy(ioutil.Discard, imageBuildResponse.Body)
-	if err != nil {
+	if _, err = io.Copy(ioutil.Discard, imageBuildResponse.Body); err != nil {
 		return err
 	}
 
