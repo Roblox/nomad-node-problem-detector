@@ -103,10 +103,7 @@ func buildConfig(context *cli.Context) error {
 		return err
 	}
 
-	if err = build.BuildImage(image, rootDir); err != nil {
-		return err
-	}
-
+	
 	var wg sync.WaitGroup
 	uiprogress.Start()
 	wg.Add(1)
@@ -117,12 +114,16 @@ func buildConfig(context *cli.Context) error {
 		bar.PrependFunc(func(b *uiprogress.Bar) string {
 			return strutil.Resize("npd: "+steps[b.Current()-1], 30)
 		})
-
+		
 		rand.Seed(500)
 		for bar.Incr() {
 			time.Sleep(time.Millisecond * time.Duration(rand.Intn(2000)))
 		}
-	}()
+		}()
+		
+	if err = build.BuildImage(image, rootDir); err != nil {
+		return err
+	}
 
 	wg.Wait()
 	fmt.Printf("%s build successfully.\n", image)
