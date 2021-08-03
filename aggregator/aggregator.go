@@ -56,6 +56,12 @@ var AggregatorCommand = &cli.Command{
 			Value:   "http://localhost:4646",
 			Usage:   "HTTP API address of a Nomad server or agent.",
 		},
+		&cli.BoolFlag{
+			Name:    "dry-run",
+			Aliases: []string{"d"},
+			Value:   false,
+			Usage:   "Run aggregator without marking Nomad nodes ineligible.",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		return aggregate(c)
@@ -115,10 +121,16 @@ func aggregate(context *cli.Context) error {
 				continue
 			}
 
+			dryRun := context.Bool("dry-run")
 			if !npdActive {
-				errMsg := fmt.Sprintf("Node %s is unhealthy, marking it as ineligible.", node.Address)
-				log.Warning(errMsg)
-				toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
+				if dryRun {
+					errMsg := fmt.Sprintf("Node %s is unhealthy, dry-run mode active.", node.Address) 
+					log.Warning(errMsg)
+				} else {
+					errMsg := fmt.Sprintf("Node %s is unhealthy, marking it as ineligible.", node.Address)
+					log.Warning(errMsg)
+					toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
+				}
 				continue
 			}
 
@@ -197,7 +209,7 @@ func aggregate(context *cli.Context) error {
 				}
 			}
 
-			if len(previous) == 0 || stateChanged {
+			if !dryRun && (len(previous) == 0 || stateChanged) {
 				if nodeHealthy {
 					toggleNodeEligibility(nodeHandle, node.ID, node.Address, true)
 				} else {

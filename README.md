@@ -161,6 +161,7 @@ $ curl -H "Authorization: Basic <base64_encoded_token>" http://localhost:8083/v1
 | **aggregation-cycle-time** | string | no | `15s` | Time (in seconds) to wait between each aggregation cycle. |
 | **detector-port** | string | no | `:8083` | Detector HTTP server port |
 | **nomad-server** | string | no | `http://localhost:4646` | HTTP API address of a Nomad server or agent. |
+| **dry-run** | bool | no | `false` | Run aggregator without marking Nomad nodes ineligible. |
 
 **Detector** - Run nomad node problem detector HTTP server
 
