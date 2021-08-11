@@ -9,11 +9,10 @@ require (
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
-	github.com/hashicorp/nomad v1.0.4
+	github.com/hashicorp/nomad v1.0.5
 	github.com/hashicorp/nomad/api v0.0.0-20210128220232-4b7ee2269213
 	github.com/jhoonb/archivex v0.0.0-20201016144719-6a343cdae81d
 	github.com/mackerelio/go-osstat v0.1.0
-	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/otiai10/copy v1.6.0
 	github.com/shirou/gopsutil v3.21.2+incompatible
 	github.com/sirupsen/logrus v1.7.0
