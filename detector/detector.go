@@ -161,9 +161,7 @@ func startNpdHttpServer(context *cli.Context) error {
 func readConfig(configPath string, configFile interface{}) error {
 	if _, err := os.Stat(configPath); err != nil {
 		if os.IsNotExist(err) {
-			msg := fmt.Sprintf("Config file: %s does not exist, continue with default cpu, memory and disk checks.\n", configPath)
-			log.Warning(msg)
-			return nil
+			return fmt.Errorf("Config file: %s does not exist.", configPath)
 		} else {
 			return err
 		}
@@ -185,7 +183,8 @@ func collect(done chan bool, detectorCycleTime time.Duration, limits *Limits) {
 
 	configFile := []types.Config{}
 	if err := readConfig(configPath, &configFile); err != nil {
-		log.Fatal(err)
+		msg := fmt.Sprintf("Error in reading config: %s: error: %s, continue with default cpu, memory and disk checks.\n", configPath, err.Error())
+		log.Warning(msg)
 	}
 
 	cpuLimit, err := strconv.ParseFloat(limits.cpuLimit, 64)
