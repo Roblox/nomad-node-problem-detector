@@ -46,6 +46,7 @@ var ConfigCommand = &cli.Command{
 					Name:    "root-dir",
 					Aliases: []string{"d"},
 					Usage:   "Location of health checks. Defaults to pwd",
+					EnvVars: []string{"ROOT_DIR"},
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -66,6 +67,7 @@ var ConfigCommand = &cli.Command{
 					Name:    "root-dir",
 					Aliases: []string{"d"},
 					Usage:   "Location of health checks. Defaults to pwd",
+					EnvVars: []string{"ROOT_DIR"},
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -103,7 +105,6 @@ func buildConfig(context *cli.Context) error {
 		return err
 	}
 
-	
 	var wg sync.WaitGroup
 	uiprogress.Start()
 	wg.Add(1)
@@ -114,13 +115,13 @@ func buildConfig(context *cli.Context) error {
 		bar.PrependFunc(func(b *uiprogress.Bar) string {
 			return strutil.Resize("npd: "+steps[b.Current()-1], 30)
 		})
-		
+
 		rand.Seed(500)
 		for bar.Incr() {
 			time.Sleep(time.Millisecond * time.Duration(rand.Intn(2000)))
 		}
-		}()
-		
+	}()
+
 	if err = build.BuildImage(image, rootDir); err != nil {
 		return err
 	}
