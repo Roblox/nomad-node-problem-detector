@@ -56,6 +56,11 @@ var AggregatorCommand = &cli.Command{
 			Value:   "http://localhost:4646",
 			Usage:   "HTTP API address of a Nomad server or agent.",
 		},
+		&cli.StringSliceFlag{
+			Name:    "dry-run-blacklist",
+			Aliases: []string{"d"},
+			Usage:   "Health checks in this blacklist, will not be dry-run.",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		return aggregate(c)
@@ -63,12 +68,19 @@ var AggregatorCommand = &cli.Command{
 }
 
 var pause bool
+var blacklistMap map[string]bool
 
 func aggregate(context *cli.Context) error {
 	nomadServer := context.String("nomad-server")
 	client, err := getNomadClient(nomadServer)
 	if err != nil {
 		return err
+	}
+
+	dryRunBlacklist := context.StringSlice("dry-run-blacklist")
+	blacklistMap = make(map[string]bool)
+	for _, check := range dryRunBlacklist {
+		blacklistMap[check] = true
 	}
 
 	aggregationCycleTime, err := time.ParseDuration(context.String("aggregation-cycle-time"))
@@ -116,9 +128,8 @@ func aggregate(context *cli.Context) error {
 			}
 
 			if !npdActive {
-				errMsg := fmt.Sprintf("Node %s is unhealthy, marking it as ineligible.", node.Address)
+				errMsg := fmt.Sprintf("Node problem detector /v1/health on node %s is unhealthy, skipping node.", node.Address)
 				log.Warning(errMsg)
-				toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
 				continue
 			}
 
@@ -174,6 +185,7 @@ func aggregate(context *cli.Context) error {
 
 			nodeHealthy := true
 			stateChanged := false
+			toggle := false
 
 			for _, curr := range current {
 				// Default CPU, memory and disk checks are represented with
@@ -185,6 +197,12 @@ func aggregate(context *cli.Context) error {
 					errMsg := fmt.Sprintf("Node %s: %s is %s\n", node.Address, curr.Type, curr.Result)
 					log.Warning(errMsg)
 					nodeHealthy = false
+
+					if _, ok := blacklistMap[curr.Type]; ok {
+						msg := fmt.Sprintf("%s is part of dry-run blacklist. Set node %s scheduling eligibility to false\n", curr.Type, node.Address)
+						log.Info(msg)
+						toggle = true
+					}
 				}
 
 				prev, ok := previous[curr.Type]
@@ -200,7 +218,7 @@ func aggregate(context *cli.Context) error {
 			if len(previous) == 0 || stateChanged {
 				if nodeHealthy {
 					toggleNodeEligibility(nodeHandle, node.ID, node.Address, true)
-				} else {
+				} else if toggle {
 					toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
 				}
 			}
@@ -217,6 +235,8 @@ func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, el
 		errMsg := fmt.Sprintf("Error in toggling node eligibility, skipping node %s\n", nodeAddress)
 		log.Warning(errMsg)
 	}
+	msg := fmt.Sprintf("Node %s scheduling eligibility changed to %t\n", nodeAddress, eligible)
+	log.Info(msg)
 }
 
 // Check if Nomad node problem detector (nNPD) HTTP server is healthy and active.
