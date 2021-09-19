@@ -199,9 +199,12 @@ func aggregate(context *cli.Context) error {
 					nodeHealthy = false
 
 					if _, ok := blacklistMap[curr.Type]; ok {
-						msg := fmt.Sprintf("%s is part of dry-run blacklist. Set node %s scheduling eligibility to false\n", curr.Type, node.Address)
+						msg := fmt.Sprintf("%s is in dry-run blacklist. Set node %s scheduling eligibility to false\n", curr.Type, node.Address)
 						log.Info(msg)
 						toggle = true
+					} else {
+						msg := fmt.Sprintf("%s is not in dry-run blacklist. Node %s will be dry-runned and not taken out of scheduling pool\n", curr.Type, node.Address)
+						log.Info(msg)
 					}
 				}
 
