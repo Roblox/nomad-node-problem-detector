@@ -8,7 +8,7 @@ job "aggregator" {
 
       config {
 	network_mode = "host"
-	image = "shm32/npd-aggregator:1.0.7"
+	image = "shm32/npd-aggregator:1.0.8"
 	command = "npd"
 	args    = ["aggregator", "--aggregation-cycle-time=3s", "--dry-run-blacklist=docker"]
       }
