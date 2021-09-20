@@ -46,7 +46,7 @@ var AggregatorCommand = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "threshold-percentage",
-			Value: 50,
+			Value: 85,
 			Usage: "If the number of eligible nodes goes below the threshold, npd will stop marking nodes as ineligible",
 		},
 		&cli.StringFlag{
@@ -62,9 +62,9 @@ var AggregatorCommand = &cli.Command{
 			Usage:   "HTTP API address of a Nomad server or agent.",
 		},
 		&cli.StringSliceFlag{
-			Name:    "dry-run-blacklist",
-			Aliases: []string{"d"},
-			Usage:   "Health checks in this blacklist, will not be dry-run.",
+			Name:    "enforce-health-check",
+			Aliases: []string{"hc"},
+			Usage:   "Health checks in this list will be enforced i.e. node will be taken out of the scheduling pool if health-check fails.",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -73,21 +73,25 @@ var AggregatorCommand = &cli.Command{
 }
 
 var pause bool
-var blacklistMap map[string]bool
+var enforceHCMap map[string]bool
 
 func aggregate(context *cli.Context) error {
 	nomadServer := context.String("nomad-server")
 	thresholdPercentage := context.Int("threshold-percentage")
+	if thresholdPercentage == 85 {
+		log.Warning(fmt.Sprintf("No override set for --threshold-percentage. Running with default value: %d\n", thresholdPercentage))
+		log.Warning("Recommended to set an override for --threshold-percentage based on your cluster capacity.")
+	}
 
 	client, err := getNomadClient(nomadServer)
 	if err != nil {
 		return err
 	}
 
-	dryRunBlacklist := context.StringSlice("dry-run-blacklist")
-	blacklistMap = make(map[string]bool)
-	for _, check := range dryRunBlacklist {
-		blacklistMap[check] = true
+	enforceHCList := context.StringSlice("enforce-health-check")
+	enforceHCMap = make(map[string]bool)
+	for _, hc := range enforceHCList {
+		enforceHCMap[hc] = true
 	}
 
 	aggregationCycleTime, err := time.ParseDuration(context.String("aggregation-cycle-time"))
@@ -188,6 +192,8 @@ func aggregate(context *cli.Context) error {
 				nodeHealth = m[node.ID]
 			}
 
+			// previous state map has the health check results from last aggregation cycle.
+			// This will make sure we don't toggle/untoggle a node unless there is a state change.
 			previous := make(map[string]types.HealthCheck)
 			for _, nh := range nodeHealth {
 				previous[nh.Type] = nh
@@ -208,12 +214,15 @@ func aggregate(context *cli.Context) error {
 					log.Warning(errMsg)
 					nodeHealthy = false
 
-					if _, ok := blacklistMap[curr.Type]; ok {
-						msg := fmt.Sprintf("%s is in dry-run blacklist. Set node %s scheduling eligibility to false\n", curr.Type, node.Address)
+					// Even if one of the health checks are failing, node will not be taken out of the scheduling pool.
+					// Unless that health check is part of --enforce-health-check list.
+					// Set toggle=true if above is satisfied.
+					if _, ok := enforceHCMap[curr.Type]; ok {
+						msg := fmt.Sprintf("%s is in enforce health check list. Set node %s scheduling eligibility to false\n", curr.Type, node.Address)
 						log.Info(msg)
 						toggle = true
 					} else {
-						msg := fmt.Sprintf("%s is not in dry-run blacklist. Node %s will be dry-runned and not taken out of scheduling pool\n", curr.Type, node.Address)
+						msg := fmt.Sprintf("%s is not in enforce health check list. Node %s will be dry-runned and not taken out of scheduling pool\n", curr.Type, node.Address)
 						log.Info(msg)
 					}
 				}
@@ -228,6 +237,9 @@ func aggregate(context *cli.Context) error {
 				}
 			}
 
+			// If toggle is true i.e we want to take the node out of the scheduling pool.
+			// We should only take the node out, if the available capacity stays above the threshold (--threshold-percentage)
+			// after taking this node out of the scheduling pool.
 			aboveThreshold := (float64(eligibleNodeCount)/float64(totalNodeCount))*100 > float64(thresholdPercentage)
 			toggle = toggle && aboveThreshold
 
