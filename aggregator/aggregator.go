@@ -44,6 +44,11 @@ var AggregatorCommand = &cli.Command{
 			Value:   "15s",
 			Usage:   "Time (in seconds) to wait between each aggregation cycle",
 		},
+		&cli.IntFlag{
+			Name:  "threshold-percentage",
+			Value: 50,
+			Usage: "If the number of eligible nodes goes below the threshold, npd will stop marking nodes as ineligible",
+		},
 		&cli.StringFlag{
 			Name:    "detector-port",
 			Aliases: []string{"p"},
@@ -72,6 +77,8 @@ var blacklistMap map[string]bool
 
 func aggregate(context *cli.Context) error {
 	nomadServer := context.String("nomad-server")
+	thresholdPercentage := context.Int("threshold-percentage")
+
 	client, err := getNomadClient(nomadServer)
 	if err != nil {
 		return err
@@ -116,6 +123,9 @@ func aggregate(context *cli.Context) error {
 			time.Sleep(aggregationCycleTime)
 			continue
 		}
+
+		eligibleNodeCount := getEligibleNodeCount(nodes)
+		totalNodeCount := len(nodes)
 
 		for _, node := range nodes {
 			npdServer := fmt.Sprintf("http://%s%s", node.Address, detectorPort)
@@ -218,13 +228,24 @@ func aggregate(context *cli.Context) error {
 				}
 			}
 
-			if len(previous) == 0 || stateChanged {
+			aboveThreshold := (float64(eligibleNodeCount)/float64(totalNodeCount))*100 > float64(thresholdPercentage)
+			toggle = toggle && aboveThreshold
+
+			// This is the check for first aggregation cycle. No previous state exist at this point.
+			if len(previous) == 0 && !nodeHealthy && toggle {
+				eligibleNodeCount = toggleNodeEligibility(nodeHandle, node.ID, node.Address, false, eligibleNodeCount)
+			}
+
+			// Second aggregation cycle onwards, previous state map will exist.
+			if stateChanged {
 				if nodeHealthy {
-					toggleNodeEligibility(nodeHandle, node.ID, node.Address, true)
+					eligibleNodeCount = toggleNodeEligibility(nodeHandle, node.ID, node.Address, true, eligibleNodeCount)
 				} else if toggle {
-					toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
+					eligibleNodeCount = toggleNodeEligibility(nodeHandle, node.ID, node.Address, false, eligibleNodeCount)
 				}
 			}
+
+			log.Info(fmt.Sprintf("Eligible Nodes: %d, Total Nodes: %d\n", eligibleNodeCount, totalNodeCount))
 			m[node.ID] = current
 		}
 		time.Sleep(aggregationCycleTime)
@@ -232,14 +253,33 @@ func aggregate(context *cli.Context) error {
 	return nil
 }
 
+// getEligibleNodeCount return the count of eligible nodes.
+func getEligibleNodeCount(nodes []*api.NodeListStub) int {
+	eligibleNodeCount := 0
+	for _, node := range nodes {
+		if node.SchedulingEligibility == "eligible" {
+			eligibleNodeCount++
+		}
+	}
+	return eligibleNodeCount
+}
+
 // Toggle Nomad node eligibility.
-func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, eligible bool) {
+func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, eligible bool, eligibleNodeCount int) int {
 	if _, err := nodeHandle.ToggleEligibility(nodeID, eligible, nil); err != nil {
 		errMsg := fmt.Sprintf("Error in toggling node eligibility, skipping node %s\n", nodeAddress)
 		log.Warning(errMsg)
+		return eligibleNodeCount
 	}
 	msg := fmt.Sprintf("Node %s scheduling eligibility changed to %t\n", nodeAddress, eligible)
 	log.Info(msg)
+
+	if eligible {
+		eligibleNodeCount++
+	} else {
+		eligibleNodeCount--
+	}
+	return eligibleNodeCount
 }
 
 // Check if Nomad node problem detector (nNPD) HTTP server is healthy and active.
