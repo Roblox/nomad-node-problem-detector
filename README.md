@@ -103,7 +103,7 @@ $ nomad job status detector
 
 ### Deploy aggregator
 
-Official aggregator docker image: `shm32/npd-aggregator:1.0.5`<br/>
+Official aggregator docker image: `shm32/npd-aggregator:1.0.9`<br/>
 You can find the `aggregator` nomad job spec [`here`](https://github.com/Roblox/nomad-node-problem-detector/blob/main/deploy/aggregator.nomad)
 
 ```
@@ -159,8 +159,10 @@ $ curl -H "Authorization: Basic <base64_encoded_token>" http://localhost:8083/v1
 | Option | Type | Required | Default | Description |
 | :---: | :---: | :---: | :---: | :--- |
 | **aggregation-cycle-time** | string | no | `15s` | Time (in seconds) to wait between each aggregation cycle. |
+| **threshold-percentage** | int | no | `85` | If the number of eligible nodes goes below the threshold, `npd` will stop marking nodes as ineligible. |
 | **detector-port** | string | no | `:8083` | Detector HTTP server port |
 | **nomad-server** | string | no | `http://localhost:4646` | HTTP API address of a Nomad server or agent. |
+| **enforce-health-check** | []string | no | N/A | Health checks in this list will be enforced i.e. node will be taken out of the scheduling pool if health-check fails. |
 
 **Detector** - Run nomad node problem detector HTTP server
 

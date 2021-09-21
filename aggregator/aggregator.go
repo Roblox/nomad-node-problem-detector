@@ -44,6 +44,11 @@ var AggregatorCommand = &cli.Command{
 			Value:   "15s",
 			Usage:   "Time (in seconds) to wait between each aggregation cycle",
 		},
+		&cli.IntFlag{
+			Name:  "threshold-percentage",
+			Value: 85,
+			Usage: "If the number of eligible nodes goes below the threshold, npd will stop marking nodes as ineligible",
+		},
 		&cli.StringFlag{
 			Name:    "detector-port",
 			Aliases: []string{"p"},
@@ -56,6 +61,11 @@ var AggregatorCommand = &cli.Command{
 			Value:   "http://localhost:4646",
 			Usage:   "HTTP API address of a Nomad server or agent.",
 		},
+		&cli.StringSliceFlag{
+			Name:    "enforce-health-check",
+			Aliases: []string{"hc"},
+			Usage:   "Health checks in this list will be enforced i.e. node will be taken out of the scheduling pool if health-check fails.",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		return aggregate(c)
@@ -63,12 +73,25 @@ var AggregatorCommand = &cli.Command{
 }
 
 var pause bool
+var enforceHCMap map[string]bool
 
 func aggregate(context *cli.Context) error {
 	nomadServer := context.String("nomad-server")
+	thresholdPercentage := context.Int("threshold-percentage")
+	if thresholdPercentage == 85 {
+		log.Warning(fmt.Sprintf("No override set for --threshold-percentage. Running with default value: %d\n", thresholdPercentage))
+		log.Warning("Recommended to set an override for --threshold-percentage based on your cluster capacity.")
+	}
+
 	client, err := getNomadClient(nomadServer)
 	if err != nil {
 		return err
+	}
+
+	enforceHCList := context.StringSlice("enforce-health-check")
+	enforceHCMap = make(map[string]bool)
+	for _, hc := range enforceHCList {
+		enforceHCMap[hc] = true
 	}
 
 	aggregationCycleTime, err := time.ParseDuration(context.String("aggregation-cycle-time"))
@@ -105,6 +128,9 @@ func aggregate(context *cli.Context) error {
 			continue
 		}
 
+		eligibleNodeCount := getEligibleNodeCount(nodes)
+		totalNodeCount := len(nodes)
+
 		for _, node := range nodes {
 			npdServer := fmt.Sprintf("http://%s%s", node.Address, detectorPort)
 
@@ -116,9 +142,8 @@ func aggregate(context *cli.Context) error {
 			}
 
 			if !npdActive {
-				errMsg := fmt.Sprintf("Node %s is unhealthy, marking it as ineligible.", node.Address)
+				errMsg := fmt.Sprintf("Node problem detector /v1/health on node %s is unhealthy, skipping node.", node.Address)
 				log.Warning(errMsg)
-				toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
 				continue
 			}
 
@@ -167,6 +192,8 @@ func aggregate(context *cli.Context) error {
 				nodeHealth = m[node.ID]
 			}
 
+			// previous state map has the health check results from last aggregation cycle.
+			// This will make sure we don't toggle/untoggle a node unless there is a state change.
 			previous := make(map[string]types.HealthCheck)
 			for _, nh := range nodeHealth {
 				previous[nh.Type] = nh
@@ -174,6 +201,7 @@ func aggregate(context *cli.Context) error {
 
 			nodeHealthy := true
 			stateChanged := false
+			toggle := false
 
 			for _, curr := range current {
 				// Default CPU, memory and disk checks are represented with
@@ -185,6 +213,18 @@ func aggregate(context *cli.Context) error {
 					errMsg := fmt.Sprintf("Node %s: %s is %s\n", node.Address, curr.Type, curr.Result)
 					log.Warning(errMsg)
 					nodeHealthy = false
+
+					// Even if one of the health checks are failing, node will not be taken out of the scheduling pool.
+					// Unless that health check is part of --enforce-health-check list.
+					// Set toggle=true if above is satisfied.
+					if _, ok := enforceHCMap[curr.Type]; ok {
+						msg := fmt.Sprintf("%s is in enforce health check list. Set node %s scheduling eligibility to false\n", curr.Type, node.Address)
+						log.Info(msg)
+						toggle = true
+					} else {
+						msg := fmt.Sprintf("%s is not in enforce health check list. Node %s will be dry-runned and not taken out of scheduling pool\n", curr.Type, node.Address)
+						log.Info(msg)
+					}
 				}
 
 				prev, ok := previous[curr.Type]
@@ -197,13 +237,27 @@ func aggregate(context *cli.Context) error {
 				}
 			}
 
-			if len(previous) == 0 || stateChanged {
+			// If toggle is true i.e we want to take the node out of the scheduling pool.
+			// We should only take the node out, if the available capacity stays above the threshold (--threshold-percentage)
+			// after taking this node out of the scheduling pool.
+			aboveThreshold := (float64(eligibleNodeCount)/float64(totalNodeCount))*100 > float64(thresholdPercentage)
+			toggle = toggle && aboveThreshold
+
+			// This is the check for first aggregation cycle. No previous state exist at this point.
+			if len(previous) == 0 && !nodeHealthy && toggle {
+				eligibleNodeCount = toggleNodeEligibility(nodeHandle, node.ID, node.Address, false, eligibleNodeCount)
+			}
+
+			// Second aggregation cycle onwards, previous state map will exist.
+			if stateChanged {
 				if nodeHealthy {
-					toggleNodeEligibility(nodeHandle, node.ID, node.Address, true)
-				} else {
-					toggleNodeEligibility(nodeHandle, node.ID, node.Address, false)
+					eligibleNodeCount = toggleNodeEligibility(nodeHandle, node.ID, node.Address, true, eligibleNodeCount)
+				} else if toggle {
+					eligibleNodeCount = toggleNodeEligibility(nodeHandle, node.ID, node.Address, false, eligibleNodeCount)
 				}
 			}
+
+			log.Info(fmt.Sprintf("Eligible Nodes: %d, Total Nodes: %d\n", eligibleNodeCount, totalNodeCount))
 			m[node.ID] = current
 		}
 		time.Sleep(aggregationCycleTime)
@@ -211,12 +265,33 @@ func aggregate(context *cli.Context) error {
 	return nil
 }
 
+// getEligibleNodeCount return the count of eligible nodes.
+func getEligibleNodeCount(nodes []*api.NodeListStub) int {
+	eligibleNodeCount := 0
+	for _, node := range nodes {
+		if node.SchedulingEligibility == "eligible" {
+			eligibleNodeCount++
+		}
+	}
+	return eligibleNodeCount
+}
+
 // Toggle Nomad node eligibility.
-func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, eligible bool) {
+func toggleNodeEligibility(nodeHandle *api.Nodes, nodeID, nodeAddress string, eligible bool, eligibleNodeCount int) int {
 	if _, err := nodeHandle.ToggleEligibility(nodeID, eligible, nil); err != nil {
 		errMsg := fmt.Sprintf("Error in toggling node eligibility, skipping node %s\n", nodeAddress)
 		log.Warning(errMsg)
+		return eligibleNodeCount
 	}
+	msg := fmt.Sprintf("Node %s scheduling eligibility changed to %t\n", nodeAddress, eligible)
+	log.Info(msg)
+
+	if eligible {
+		eligibleNodeCount++
+	} else {
+		eligibleNodeCount--
+	}
+	return eligibleNodeCount
 }
 
 // Check if Nomad node problem detector (nNPD) HTTP server is healthy and active.
