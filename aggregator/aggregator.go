@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -66,6 +67,10 @@ var AggregatorCommand = &cli.Command{
 			Aliases: []string{"hc"},
 			Usage:   "Health checks in this list will be enforced i.e. node will be taken out of the scheduling pool if health-check fails.",
 		},
+		&cli.StringSliceFlag{
+			Name:  "node-attribute",
+			Usage: "Aggregator will filter nodes based on these attributes. E.g. if you set os.name=ubuntu, aggregator will only reach out to ubuntu nodes in the cluster.",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		return aggregate(c)
@@ -74,6 +79,7 @@ var AggregatorCommand = &cli.Command{
 
 var pause bool
 var enforceHCMap map[string]bool
+var nodeAttributesMap map[string]string
 
 func aggregate(context *cli.Context) error {
 	nomadServer := context.String("nomad-server")
@@ -92,6 +98,17 @@ func aggregate(context *cli.Context) error {
 	enforceHCMap = make(map[string]bool)
 	for _, hc := range enforceHCList {
 		enforceHCMap[hc] = true
+	}
+
+	// Read the node attributes, and populate the attributes map.
+	nodeAttributes := context.StringSlice("node-attribute")
+	nodeAttributesMap = make(map[string]string)
+	for _, attribute := range nodeAttributes {
+		result := strings.Split(attribute, "=")
+		if len(result) != 2 {
+			return fmt.Errorf("Invalid --node-attribute. Set key=val for valid node attribute.")
+		}
+		nodeAttributesMap[result[0]] = result[1]
 	}
 
 	aggregationCycleTime, err := time.ParseDuration(context.String("aggregation-cycle-time"))
@@ -131,7 +148,41 @@ func aggregate(context *cli.Context) error {
 		eligibleNodeCount := getEligibleNodeCount(nodes)
 		totalNodeCount := len(nodes)
 
+		var nodeInfo *api.Node
 		for _, node := range nodes {
+			if len(nodeAttributesMap) > 0 {
+				nodeInfo, _, err = nodeHandle.Info(node.ID, queryOptions)
+				if err != nil {
+					errMsg := fmt.Sprintf("Error in getting node info: %v. Skipping node: %s\n", err, node.ID)
+					log.Warning(errMsg)
+					continue
+
+				}
+			}
+
+			skipNode := false
+			for key, val := range nodeAttributesMap {
+				res, ok := nodeInfo.Attributes[key]
+				if !ok {
+					log.Warning(fmt.Sprintf("Node %s: node attribute: %s doesn't exist, skipping node.", node.ID, key))
+					skipNode = true
+					break
+				}
+
+				if res != val {
+					log.Warning(fmt.Sprintf("Node %s: node attribute: %s doesn't match. Expected: %s, actual: %s. Skipping node...", node.ID, key, val, res))
+					skipNode = true
+					break
+				}
+
+			}
+
+			// If node attribute e.g. os.name=ubuntu is missing or not matching in the node info
+			// Skip this node, and move onto next one.
+			if skipNode {
+				continue
+			}
+
 			npdServer := fmt.Sprintf("http://%s%s", node.Address, detectorPort)
 
 			npdActive, err := isNpdServerActive(npdServer, authToken)
