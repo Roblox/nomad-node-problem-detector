@@ -86,6 +86,11 @@ var enforceHCMap map[string]bool
 var nodeAttributesMap map[string]string
 
 func aggregate(context *cli.Context) error {
+	debug := context.Bool("debug")
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	}
+
 	nomadServer := context.String("nomad-server")
 	thresholdPercentage := context.Int("threshold-percentage")
 	if thresholdPercentage == 85 {
@@ -132,6 +137,9 @@ func aggregate(context *cli.Context) error {
 
 	queryOptions := &api.QueryOptions{AllowStale: true}
 
+	// Aggregation cycle index
+	index := 0
+
 	// map[nodeID][node health check /v1/nodehealth/]
 	m := make(map[string][]types.HealthCheck)
 	for {
@@ -141,6 +149,8 @@ func aggregate(context *cli.Context) error {
 		}
 
 		log.Info("Collect and aggregate nodes health")
+		startTime := time.Now()
+
 		nodes, _, err := nodeHandle.List(queryOptions)
 		if err != nil {
 			log.Warning(fmt.Sprintf("Error in listing nomad nodes: %v\n", err))
@@ -151,12 +161,14 @@ func aggregate(context *cli.Context) error {
 		eligibleNodeCount := getEligibleNodeCount(nodes)
 		totalNodeCount := len(nodes)
 
+		log.Info(fmt.Sprintf("Eligible Nodes: %d, Total Nodes: %d", eligibleNodeCount, totalNodeCount))
+
 		var nodeInfo *api.Node
 		for _, node := range nodes {
 			if len(nodeAttributesMap) > 0 {
 				nodeInfo, _, err = nodeHandle.Info(node.ID, queryOptions)
 				if err != nil {
-					log.Warning(fmt.Sprintf("Error in getting node info: %v. Skipping node: %s\n", err, node.ID))
+					log.Warning(fmt.Sprintf("Error in getting node info: %v. Skipping node: %s\n", err, node.Address))
 					continue
 
 				}
@@ -166,13 +178,17 @@ func aggregate(context *cli.Context) error {
 			for key, val := range nodeAttributesMap {
 				res, ok := nodeInfo.Attributes[key]
 				if !ok {
-					log.Warning(fmt.Sprintf("Node %s: node attribute: %s doesn't exist, skipping node.", node.ID, key))
+					if debug {
+						log.Debug(fmt.Sprintf("Node %s: node attribute: %s doesn't exist, skipping node.", node.Address, key))
+					}
 					skipNode = true
 					break
 				}
 
 				if res != val {
-					log.Warning(fmt.Sprintf("Node %s: node attribute: %s doesn't match. Expected: %s, actual: %s. Skipping node...", node.ID, key, val, res))
+					if debug {
+						log.Debug(fmt.Sprintf("Node %s: node attribute: %s doesn't match. Expected: %s, actual: %s. Skipping node...", node.Address, key, val, res))
+					}
 					skipNode = true
 					break
 				}
@@ -257,7 +273,7 @@ func aggregate(context *cli.Context) error {
 				// is under CPU/memory/disk pressure and should be taken out of
 				// eligibility.
 				if curr.Result == "Unhealthy" || curr.Result == "true" {
-					log.Warning(fmt.Sprintf("Node %s: %s is %s\n", node.Address, curr.Type, curr.Result))
+					log.Warning(fmt.Sprintf("Node %s: %s is %s: %s\n", node.Address, curr.Type, curr.Result, curr.Message))
 					nodeHealthy = false
 
 					// Even if one of the health checks are failing, node will not be taken out of the scheduling pool.
@@ -268,6 +284,10 @@ func aggregate(context *cli.Context) error {
 						toggle = true
 					} else {
 						log.Info(fmt.Sprintf("%s is not in enforce health check list. Node %s will be dry-runned and not taken out of scheduling pool\n", curr.Type, node.Address))
+					}
+				} else {
+					if debug {
+						log.Debug(fmt.Sprintf("Node %s: %s is %s: %s\n", node.Address, curr.Type, curr.Result, curr.Message))
 					}
 				}
 
@@ -300,10 +320,14 @@ func aggregate(context *cli.Context) error {
 					eligibleNodeCount = toggleNodeEligibility(nodeHandle, node.ID, node.Address, false, eligibleNodeCount)
 				}
 			}
-
-			log.Info(fmt.Sprintf("Eligible Nodes: %d, Total Nodes: %d\n", eligibleNodeCount, totalNodeCount))
 			m[node.ID] = current
 		}
+
+		endTime := time.Now()
+		diff := endTime.Sub(startTime).Seconds()
+		log.Info(fmt.Sprintf("Aggregation cycle %d: processing time: %.2f seconds.", index, diff))
+		index++
+
 		time.Sleep(aggregationCycleTime)
 	}
 	return nil
