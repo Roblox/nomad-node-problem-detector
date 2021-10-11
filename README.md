@@ -159,10 +159,12 @@ $ curl -H "Authorization: Basic <base64_encoded_token>" http://localhost:8083/v1
 | Option | Type | Required | Default | Description |
 | :---: | :---: | :---: | :---: | :--- |
 | **aggregation-cycle-time** | string | no | `15s` | Time (in seconds) to wait between each aggregation cycle. |
-| **threshold-percentage** | int | no | `85` | If the number of eligible nodes goes below the threshold, `npd` will stop marking nodes as ineligible. |
+| **debug** | bool | no | false | Enable debug logging. |
 | **detector-port** | string | no | `:8083` | Detector HTTP server port |
-| **nomad-server** | string | no | `http://localhost:4646` | HTTP API address of a Nomad server or agent. |
 | **enforce-health-check** | []string | no | N/A | Health checks in this list will be enforced i.e. node will be taken out of the scheduling pool if health-check fails. |
+| **nomad-server** | string | no | `http://localhost:4646` | HTTP API address of a Nomad server or agent. |
+| **node-attribute** | []string | no | N/A | Aggregator will filter nodes based on these attributes. E.g. if you set `os.name=ubuntu`, aggregator will only reach out to ubuntu nodes in the cluster. |
+| **threshold-percentage** | int | no | `85` | If the number of eligible nodes goes below the threshold, `npd` will stop marking nodes as ineligible. |
 
 **Detector** - Run nomad node problem detector HTTP server
 
