@@ -12,7 +12,7 @@ require (
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/hashicorp/go-version v1.2.1 // indirect
 	github.com/hashicorp/memberlist v0.2.4 // indirect
-	github.com/hashicorp/nomad v1.1.4
+	github.com/hashicorp/nomad v1.1.8
 	github.com/hashicorp/nomad/api v0.0.0-20210128220232-4b7ee2269213
 	github.com/hashicorp/raft v1.3.1 // indirect
 	github.com/hashicorp/yamux v0.0.0-20200609203250-aecfd211c9ce // indirect
