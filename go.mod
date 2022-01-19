@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/armon/go-metrics v0.3.8 // indirect
-	github.com/containerd/containerd v1.5.8 // indirect
+	github.com/containerd/containerd v1.5.9 // indirect
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200330121334-7f8b4b621b5d+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/go-ole/go-ole v1.2.5 // indirect
@@ -19,7 +19,6 @@ require (
 	github.com/jhoonb/archivex v0.0.0-20201016144719-6a343cdae81d
 	github.com/mackerelio/go-osstat v0.1.0
 	github.com/miekg/dns v1.1.41 // indirect
-	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/otiai10/copy v1.6.0
 	github.com/shirou/gopsutil v3.21.2+incompatible
 	github.com/sirupsen/logrus v1.8.1
