@@ -129,6 +129,13 @@ func aggregate(context *cli.Context) error {
 
 	authToken := os.Getenv("DETECTOR_HTTP_TOKEN")
 
+	// Read aggregator DC (Datacenter).
+	// Same DC should be used when reaching out to npd detectors.
+	datacenter := os.Getenv("NOMAD_DC")
+	if datacenter == "" {
+		return fmt.Errorf("NOMAD_DC environment variable missing. Datacenter must be set.")
+	}
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGUSR1)
 	go flipPause(sigs)
@@ -165,13 +172,11 @@ func aggregate(context *cli.Context) error {
 
 		var nodeInfo *api.Node
 		for _, node := range nodes {
-			if len(nodeAttributesMap) > 0 {
-				nodeInfo, _, err = nodeHandle.Info(node.ID, queryOptions)
-				if err != nil {
-					log.Warning(fmt.Sprintf("Error in getting node info: %v. Skipping node: %s\n", err, node.Address))
-					continue
+			nodeInfo, _, err = nodeHandle.Info(node.ID, queryOptions)
+			if err != nil {
+				log.Warning(fmt.Sprintf("Error in getting node info: %v. Skipping node: %s\n", err, node.Address))
+				continue
 
-				}
 			}
 
 			skipNode := false
@@ -195,8 +200,12 @@ func aggregate(context *cli.Context) error {
 
 			}
 
+			if nodeInfo.Datacenter != datacenter {
+				skipNode = true
+			}
+
 			// If node attribute e.g. os.name=ubuntu is missing or not matching in the node info
-			// Skip this node, and move onto next one.
+			// OR node is not in the same DC as aggregator DC, Skip this node, and move onto next one.
 			if skipNode {
 				continue
 			}
