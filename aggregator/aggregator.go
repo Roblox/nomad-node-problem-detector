@@ -214,7 +214,10 @@ func aggregate(context *cli.Context) error {
 
 			npdActive, err := isNpdServerActive(npdServer, authToken)
 			if err != nil {
-				log.Warning(fmt.Sprintf("Node %s is unreachable, skipping node.", node.Address))
+				log.Warning(fmt.Sprintf("NNPD detector server is not active, maybe node %s was ineligible when npd was deployed, skipping node.", node.Address))
+				if debug {
+					log.Debug(fmt.Sprintf("Error: %v\n", err))
+				}
 				continue
 			}
 
@@ -226,7 +229,7 @@ func aggregate(context *cli.Context) error {
 			url := npdServer + "/v1/nodehealth/"
 			req, err := http.NewRequest("POST", url, nil)
 			if err != nil {
-				log.Warning(fmt.Sprintf("Error in building /v1/nodehealth/ HTTP request, skipping node %s\n", node.Address))
+				log.Warning(fmt.Sprintf("Error in building /v1/nodehealth/ HTTP request: %v, skipping node %s\n", err, node.Address))
 				continue
 			}
 
@@ -239,14 +242,14 @@ func aggregate(context *cli.Context) error {
 			client := &http.Client{Timeout: time.Second * 5}
 			resp, err := client.Do(req)
 			if err != nil {
-				log.Warning(fmt.Sprintf("Error in getting /v1/nodehealth/ HTTP response, skipping node %s\n", node.Address))
+				log.Warning(fmt.Sprintf("Error in getting /v1/nodehealth/ HTTP response: %v, skipping node %s\n", err, node.Address))
 				resp.Body.Close()
 				continue
 			}
 
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				log.Warning(fmt.Sprintf("Error in reading /v1/nodehealth/ HTTP response, skipping node %s\n", node.Address))
+				log.Warning(fmt.Sprintf("Error in reading /v1/nodehealth/ HTTP response: %v, skipping node %s\n", err, node.Address))
 				resp.Body.Close()
 				continue
 			}
@@ -255,7 +258,7 @@ func aggregate(context *cli.Context) error {
 
 			current := []types.HealthCheck{}
 			if err := json.Unmarshal(body, &current); err != nil {
-				log.Warning(fmt.Sprintf("Error in unmarshalling /v1/nodehealth/ HTTP response body, skipping node %s\n", node.Address))
+				log.Warning(fmt.Sprintf("Error in unmarshalling /v1/nodehealth/ HTTP response body: %v, skipping node %s\n", err, node.Address))
 				continue
 			}
 
