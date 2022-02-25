@@ -6,7 +6,6 @@ ifndef $(GOLANG)
 endif
 
 export GO111MODULE=on
-export GOOS=linux
 export NOMAD_ADDR=http://localhost:4646
 export NOMAD_E2E=1
 
