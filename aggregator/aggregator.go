@@ -56,6 +56,11 @@ var AggregatorCommand = &cli.Command{
 			Usage:   "Detector HTTP server port",
 		},
 		&cli.StringSliceFlag{
+			Name:    "detector-datacenter",
+			Aliases: []string{"dc"},
+			Usage:   "List of datacenters where detector is running.",
+		},
+		&cli.StringSliceFlag{
 			Name:    "enforce-health-check",
 			Aliases: []string{"hc"},
 			Usage:   "Health checks in this list will be enforced i.e. node will be taken out of the scheduling pool if health-check fails.",
@@ -81,9 +86,12 @@ var AggregatorCommand = &cli.Command{
 	},
 }
 
-var pause bool
-var enforceHCMap map[string]bool
-var nodeAttributesMap map[string]string
+var (
+	pause             bool
+	enforceHCMap      map[string]bool
+	detectorDCMap     map[string]bool
+	nodeAttributesMap map[string]string
+)
 
 func aggregate(context *cli.Context) error {
 	debug := context.Bool("debug")
@@ -109,6 +117,13 @@ func aggregate(context *cli.Context) error {
 		enforceHCMap[hc] = true
 	}
 
+	// Create the map of datacenters (DCs) where detector is running.
+	detectorDCList := context.StringSlice("detector-datacenter")
+	detectorDCMap = make(map[string]bool)
+	for _, dc := range detectorDCList {
+		detectorDCMap[dc] = true
+	}
+
 	// Read the node attributes, and populate the attributes map.
 	nodeAttributes := context.StringSlice("node-attribute")
 	nodeAttributesMap = make(map[string]string)
@@ -130,11 +145,13 @@ func aggregate(context *cli.Context) error {
 	authToken := os.Getenv("DETECTOR_HTTP_TOKEN")
 
 	// Read aggregator DC (Datacenter).
-	// Same DC should be used when reaching out to npd detectors.
+	// $NOMAD_DC along with detector-datacenter list will be used
+	// when reaching out to npd detectors.
 	datacenter := os.Getenv("NOMAD_DC")
 	if datacenter == "" {
 		return fmt.Errorf("NOMAD_DC environment variable missing. Datacenter must be set.")
 	}
+	detectorDCMap[datacenter] = true
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGUSR1)
@@ -200,12 +217,12 @@ func aggregate(context *cli.Context) error {
 
 			}
 
-			if nodeInfo.Datacenter != datacenter {
+			if _, ok := detectorDCMap[nodeInfo.Datacenter]; !ok {
 				skipNode = true
 			}
 
 			// If node attribute e.g. os.name=ubuntu is missing or not matching in the node info
-			// OR node is not in the same DC as aggregator DC, Skip this node, and move onto next one.
+			// OR node is not in a DC where detector is running, Skip this node, and move onto next one.
 			if skipNode {
 				continue
 			}
