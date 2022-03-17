@@ -150,7 +150,7 @@ func startNpdHttpServer(context *cli.Context) error {
 	})
 	http.HandleFunc("/v1/health/", healthCheckHandler)
 	http.HandleFunc("/v1/nodehealth/", nodeHealthHandler)
-	http.Handle("/v1/metrics", metricsHandler(reg))
+	http.Handle("/v1/metrics/", metricsHandler(reg))
 
 	log.Info(fmt.Sprintf("detector started with --cpu-limit: %s%%", limits.cpuLimit))
 	log.Info(fmt.Sprintf("detector started with --memory-limit: %s%%", limits.memoryLimit))
