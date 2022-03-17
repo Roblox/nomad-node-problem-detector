@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -31,6 +30,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 
 	units "github.com/docker/go-units"
 	types "github.com/nomad-node-problem-detector/types"
@@ -131,6 +134,8 @@ func startNpdHttpServer(context *cli.Context) error {
 		diskLimit:   context.String("disk-limit"),
 	}
 
+	reg := registerMetrics()
+
 	nomadAllocDir := os.Getenv("NOMAD_ALLOC_DIR")
 	if nomadAllocDir != "" {
 		nnpdRoot = nomadAllocDir + nnpdRoot
@@ -145,6 +150,7 @@ func startNpdHttpServer(context *cli.Context) error {
 	})
 	http.HandleFunc("/v1/health/", healthCheckHandler)
 	http.HandleFunc("/v1/nodehealth/", nodeHealthHandler)
+	http.Handle("/metrics", metricsHandler(reg))
 
 	log.Info(fmt.Sprintf("detector started with --cpu-limit: %s%%", limits.cpuLimit))
 	log.Info(fmt.Sprintf("detector started with --memory-limit: %s%%", limits.memoryLimit))
@@ -377,4 +383,25 @@ func nodeHealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(respJSON)
+}
+
+func metricsHandler(registry *prometheus.Registry) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if auth {
+			if err := validateAuthorizationToken(w, r); err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(err.Error()))
+				return
+			}
+		}
+		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+		h.ServeHTTP(w, r)
+	})
+}
+
+func registerMetrics() *prometheus.Registry {
+	r := prometheus.NewRegistry()
+	r.MustRegister(prometheus.NewGoCollector())
+	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	return r
 }

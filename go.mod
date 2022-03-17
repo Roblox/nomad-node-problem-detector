@@ -20,6 +20,7 @@ require (
 	github.com/mackerelio/go-osstat v0.1.0
 	github.com/miekg/dns v1.1.41 // indirect
 	github.com/otiai10/copy v1.6.0
+	github.com/prometheus/client_golang v1.7.1
 	github.com/shirou/gopsutil v3.21.2+incompatible
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0

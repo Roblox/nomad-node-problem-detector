@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	types "github.com/nomad-node-problem-detector/types"
@@ -203,5 +204,27 @@ func TestHealthEndpoint(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("healthCheckHandler returned incorrect status code: got %v, expected %v", status, http.StatusOK)
+	}
+}
+
+// TestMetricsEndpoint test the /metrics HTTP endpoint.
+func TestMetricsEndpoint(t *testing.T) {
+	r := registerMetrics()
+
+	req, err := http.NewRequest("GET", "/metrics", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := metricsHandler(r)
+	handler.ServeHTTP(rr, req)
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("prometheusMetricsHandlerFor returned incorrect status code: got %v, expected %v", status, http.StatusOK)
+	}
+
+	expectedMetric := "go_threads"
+	if !strings.Contains(rr.Body.String(), expectedMetric) {
+		t.Errorf("prometheusMetricsHandlerFor returned incorrect content: got %v, expected %v", rr.Body.String(), expectedMetric)
 	}
 }
