@@ -207,11 +207,11 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 }
 
-// TestMetricsEndpoint test the /metrics HTTP endpoint.
+// TestMetricsEndpoint test the /v1/metrics HTTP endpoint.
 func TestMetricsEndpoint(t *testing.T) {
 	r := registerMetrics()
 
-	req, err := http.NewRequest("GET", "/metrics", nil)
+	req, err := http.NewRequest("GET", "/v1/metrics", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
