@@ -21,7 +21,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -30,8 +29,11 @@ import (
 	"syscall"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/hashicorp/nomad/api"
 	types "github.com/nomad-node-problem-detector/types"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -79,6 +81,16 @@ var AggregatorCommand = &cli.Command{
 			Name:  "threshold-percentage",
 			Value: 85,
 			Usage: "If the number of eligible nodes goes below the threshold, npd will stop marking nodes as ineligible",
+		},
+		&cli.IntFlag{
+			Name:  "prometheus-server-port",
+			Value: 3000,
+			Usage: "The port used to expose aggregators metrics in prometheus format",
+		},
+		&cli.StringFlag{
+			Name:  "prometheus-server-addr",
+			Value: "0.0.0.0",
+			Usage: "The address to bind the aggregator metrics exporter",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -157,6 +169,8 @@ func aggregate(context *cli.Context) error {
 	signal.Notify(sigs, syscall.SIGUSR1)
 	go flipPause(sigs)
 
+	metricsExporter(context.String("prometheus-server-addr"), context.Int("prometheus-server-port"))
+
 	nodeHandle := client.Nodes()
 
 	queryOptions := &api.QueryOptions{AllowStale: true}
@@ -167,6 +181,7 @@ func aggregate(context *cli.Context) error {
 	// map[nodeID][node health check /v1/nodehealth/]
 	m := make(map[string][]types.HealthCheck)
 	for {
+		aggregatorCyclesTotalCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 		if pause {
 			// Aggregator is paused. Wait for unpause.
 			continue
@@ -183,7 +198,10 @@ func aggregate(context *cli.Context) error {
 		}
 
 		eligibleNodeCount := getEligibleNodeCount(nodes)
+		eligibleNodesGauge.With(prometheus.Labels{"dc": datacenter}).Set(float64(eligibleNodeCount))
+
 		totalNodeCount := len(nodes)
+		nodesTotalGauge.With(prometheus.Labels{"dc": datacenter}).Set(float64(totalNodeCount))
 
 		log.Info(fmt.Sprintf("Eligible Nodes: %d, Total Nodes: %d", eligibleNodeCount, totalNodeCount))
 
@@ -192,8 +210,8 @@ func aggregate(context *cli.Context) error {
 			nodeInfo, _, err = nodeHandle.Info(node.ID, queryOptions)
 			if err != nil {
 				log.Warning(fmt.Sprintf("Error in getting node info: %v. Skipping node: %s\n", err, node.Address))
+				nodeHandleErrorsCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				continue
-
 			}
 
 			skipNode := false
@@ -224,6 +242,7 @@ func aggregate(context *cli.Context) error {
 			// If node attribute e.g. os.name=ubuntu is missing or not matching in the node info
 			// OR node is not in a DC where detector is running, Skip this node, and move onto next one.
 			if skipNode {
+				nodeHandleSkipCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				continue
 			}
 
@@ -235,11 +254,13 @@ func aggregate(context *cli.Context) error {
 				if debug {
 					log.Debug(fmt.Sprintf("Error: %v\n", err))
 				}
+				nodeHandleErrorsCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				continue
 			}
 
 			if !npdActive {
 				log.Warning(fmt.Sprintf("Node problem detector /v1/health on node %s is unhealthy, skipping node.", node.Address))
+				nodeHandleErrorsCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				continue
 			}
 
@@ -247,6 +268,7 @@ func aggregate(context *cli.Context) error {
 			req, err := http.NewRequest("POST", url, nil)
 			if err != nil {
 				log.Warning(fmt.Sprintf("Error in building /v1/nodehealth/ HTTP request: %v, skipping node %s\n", err, node.Address))
+				nodeHandleErrorsCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				continue
 			}
 
@@ -260,6 +282,7 @@ func aggregate(context *cli.Context) error {
 			resp, err := client.Do(req)
 			if err != nil {
 				log.Warning(fmt.Sprintf("Error in getting /v1/nodehealth/ HTTP response: %v, skipping node %s\n", err, node.Address))
+				nodeHandleErrorsCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				resp.Body.Close()
 				continue
 			}
@@ -267,6 +290,7 @@ func aggregate(context *cli.Context) error {
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				log.Warning(fmt.Sprintf("Error in reading /v1/nodehealth/ HTTP response: %v, skipping node %s\n", err, node.Address))
+				nodeHandleErrorsCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				resp.Body.Close()
 				continue
 			}
@@ -276,6 +300,7 @@ func aggregate(context *cli.Context) error {
 			current := []types.HealthCheck{}
 			if err := json.Unmarshal(body, &current); err != nil {
 				log.Warning(fmt.Sprintf("Error in unmarshalling /v1/nodehealth/ HTTP response body: %v, skipping node %s\n", err, node.Address))
+				nodeHandleErrorsCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 				continue
 			}
 
@@ -304,7 +329,7 @@ func aggregate(context *cli.Context) error {
 				if curr.Result == "Unhealthy" || curr.Result == "true" {
 					log.Warning(fmt.Sprintf("Node %s: %s is %s: %s\n", node.Address, curr.Type, curr.Result, curr.Message))
 					nodeHealthy = false
-
+					nodeUnhealthyCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 					// Even if one of the health checks are failing, node will not be taken out of the scheduling pool.
 					// Unless that health check is part of --enforce-health-check list.
 					// Set toggle=true if above is satisfied.
@@ -315,6 +340,7 @@ func aggregate(context *cli.Context) error {
 						log.Info(fmt.Sprintf("%s is not in enforce health check list. Node %s will be dry-runned and not taken out of scheduling pool\n", curr.Type, node.Address))
 					}
 				} else {
+					nodeHealthyCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 					if debug {
 						log.Debug(fmt.Sprintf("Node %s: %s is %s: %s\n", node.Address, curr.Type, curr.Result, curr.Message))
 					}
@@ -326,6 +352,7 @@ func aggregate(context *cli.Context) error {
 						continue
 					} else {
 						stateChanged = true
+						nodeHealthStateChangedCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
 					}
 				}
 			}
@@ -355,6 +382,8 @@ func aggregate(context *cli.Context) error {
 		endTime := time.Now()
 		diff := endTime.Sub(startTime).Seconds()
 		log.Info(fmt.Sprintf("Aggregation cycle %d: processing time: %.2f seconds.", index, diff))
+		aggregatorProcessingTime.With(prometheus.Labels{"dc": datacenter}).Set(diff)
+
 		index++
 
 		time.Sleep(aggregationCycleTime)
