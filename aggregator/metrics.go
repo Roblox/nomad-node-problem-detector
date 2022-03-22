@@ -43,27 +43,27 @@ var (
 
 	nodeHandleSkipCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "node_handle_skips",
+			Name: "node_handle_skip",
 			Help: "Count of nodes skipped",
 		}, []string{"dc"})
 
-	nodeHealthyCounter = prometheus.NewCounterVec(
+	healthCheckHealthyCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "node_healthy",
 			Help: "Count of healthy nodes",
-		}, []string{"dc"})
+		}, []string{"dc", "check"})
 
-	nodeUnhealthyCounter = prometheus.NewCounterVec(
+	healthCheckUnhealthyCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "node_unhealthy",
 			Help: "Count of unhealthy nodes",
-		}, []string{"dc"})
+		}, []string{"dc", "check", "host"})
 
-	nodeHealthStateChangedCounter = prometheus.NewCounterVec(
+	healthCheckStateChangedCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "node_health_state_changes",
 			Help: "Count of hosts whose states has changed",
-		}, []string{"dc"})
+		}, []string{"dc", "check", "host"})
 )
 
 func registerMetrics() *prometheus.Registry {
@@ -74,9 +74,9 @@ func registerMetrics() *prometheus.Registry {
 	r.MustRegister(nodesTotalGauge)
 	r.MustRegister(nodeHandleErrorsCounter)
 	r.MustRegister(nodeHandleSkipCounter)
-	r.MustRegister(nodeHealthyCounter)
-	r.MustRegister(nodeUnhealthyCounter)
-	r.MustRegister(nodeHealthStateChangedCounter)
+	r.MustRegister(healthCheckHealthyCounter)
+	r.MustRegister(healthCheckUnhealthyCounter)
+	r.MustRegister(healthCheckStateChangedCounter)
 	r.MustRegister(prometheus.NewGoCollector())
 	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	return r

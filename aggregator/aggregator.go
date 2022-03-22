@@ -329,7 +329,8 @@ func aggregate(context *cli.Context) error {
 				if curr.Result == "Unhealthy" || curr.Result == "true" {
 					log.Warning(fmt.Sprintf("Node %s: %s is %s: %s\n", node.Address, curr.Type, curr.Result, curr.Message))
 					nodeHealthy = false
-					nodeUnhealthyCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
+					healthCheckUnhealthyCounter.With(prometheus.Labels{"dc": datacenter, "check": curr.Type, "host": node.Address}).Inc()
+
 					// Even if one of the health checks are failing, node will not be taken out of the scheduling pool.
 					// Unless that health check is part of --enforce-health-check list.
 					// Set toggle=true if above is satisfied.
@@ -340,7 +341,7 @@ func aggregate(context *cli.Context) error {
 						log.Info(fmt.Sprintf("%s is not in enforce health check list. Node %s will be dry-runned and not taken out of scheduling pool\n", curr.Type, node.Address))
 					}
 				} else {
-					nodeHealthyCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
+					healthCheckHealthyCounter.With(prometheus.Labels{"dc": datacenter, "check": curr.Type}).Inc()
 					if debug {
 						log.Debug(fmt.Sprintf("Node %s: %s is %s: %s\n", node.Address, curr.Type, curr.Result, curr.Message))
 					}
@@ -352,7 +353,7 @@ func aggregate(context *cli.Context) error {
 						continue
 					} else {
 						stateChanged = true
-						nodeHealthStateChangedCounter.With(prometheus.Labels{"dc": datacenter}).Inc()
+						healthCheckStateChangedCounter.With(prometheus.Labels{"dc": datacenter, "check": curr.Type, "host": node.Address}).Inc()
 					}
 				}
 			}
