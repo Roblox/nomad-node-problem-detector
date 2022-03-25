@@ -353,7 +353,6 @@ func aggregate(context *cli.Context) error {
 						continue
 					} else {
 						stateChanged = true
-						healthCheckStateChangedCounter.With(prometheus.Labels{"dc": datacenter, "check": curr.Type, "host": node.Address}).Inc()
 					}
 				}
 			}
