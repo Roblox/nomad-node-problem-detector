@@ -57,7 +57,7 @@ var (
 		prometheus.CounterOpts{
 			Name: "node_unhealthy",
 			Help: "Count of unhealthy nodes",
-		}, []string{"dc", "check", "host"})
+		}, []string{"dc", "check", "host", "message"})
 )
 
 func registerMetrics() *prometheus.Registry {

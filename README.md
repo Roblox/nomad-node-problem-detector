@@ -166,6 +166,8 @@ $ curl -H "Authorization: Basic <base64_encoded_token>" http://localhost:8083/v1
 | **nomad-server** | string | no | `http://localhost:4646` | HTTP API address of a Nomad server or agent. |
 | **node-attribute** | []string | no | N/A | Aggregator will filter nodes based on these attributes. E.g. if you set `os.name=ubuntu`, aggregator will only reach out to ubuntu nodes in the cluster. |
 | **threshold-percentage** | int | no | `85` | If the number of eligible nodes goes below the threshold, `npd` will stop marking nodes as ineligible. |
+| **prometheus-server-port** | int | no | `3000` | The port used to expose aggregator metrics in the prometheus format |
+| **prometheus-server-addr** | string | no | `0.0.0.0` | The address to bind the aggregator metrics exporter |
 
 **Detector** - Run nomad node problem detector HTTP server
 
