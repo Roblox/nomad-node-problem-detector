@@ -329,7 +329,7 @@ func aggregate(context *cli.Context) error {
 				if curr.Result == "Unhealthy" || curr.Result == "true" {
 					log.Warning(fmt.Sprintf("Node %s: %s is %s: %s\n", node.Address, curr.Type, curr.Result, curr.Message))
 					nodeHealthy = false
-					healthCheckUnhealthyCounter.With(prometheus.Labels{"dc": datacenter, "check": curr.Type, "host": node.Address, "message": curr.Message}).Inc()
+					healthCheckUnhealthyCounter.With(prometheus.Labels{"dc": datacenter, "check": curr.Type, "host": node.Address}).Inc()
 
 					// Even if one of the health checks are failing, node will not be taken out of the scheduling pool.
 					// Unless that health check is part of --enforce-health-check list.

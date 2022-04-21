@@ -37,27 +37,27 @@ var (
 
 	nodeHandleErrorsCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "node_handle_errors",
-			Help: "Count of errors while handling a node",
+			Name: "nodes_handle_errors",
+			Help: "Count of errors while handling nodes",
 		}, []string{"dc"})
 
 	nodeHandleSkipCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "node_handle_skip",
+			Name: "nodes_handle_skip",
 			Help: "Count of nodes skipped",
 		}, []string{"dc"})
 
 	healthCheckHealthyCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "node_healthy",
+			Name: "nodes_healthy",
 			Help: "Count of healthy nodes",
 		}, []string{"dc", "check"})
 
 	healthCheckUnhealthyCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "node_unhealthy",
+			Name: "nodes_unhealthy",
 			Help: "Count of unhealthy nodes",
-		}, []string{"dc", "check", "host", "message"})
+		}, []string{"dc", "check", "host"})
 )
 
 func registerMetrics() *prometheus.Registry {
