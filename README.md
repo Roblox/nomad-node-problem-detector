@@ -103,7 +103,7 @@ $ nomad job status detector
 
 ### Deploy aggregator
 
-Official aggregator docker image: `shm32/npd-aggregator:1.0.9`<br/>
+Official aggregator docker image: `shm32/npd-aggregator:1.1.0`<br/>
 You can find the `aggregator` nomad job spec [`here`](https://github.com/Roblox/nomad-node-problem-detector/blob/main/deploy/aggregator.nomad)
 
 ```
