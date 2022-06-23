@@ -1,6 +1,7 @@
 package aggregator
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -82,8 +83,14 @@ func metricsExporter(exporterAddr string, exporterPort int) {
 	go func() {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+		mux.HandleFunc("/health", healthCheckHandler)
 		if err := http.ListenAndServe(addr, mux); err != nil {
 			log.Fatalf("Failed to start Prometheus scrape endpoint: %v", err)
 		}
 	}()
+}
+
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Calling /health")
+	w.WriteHeader(http.StatusOK)
 }
