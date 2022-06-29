@@ -207,6 +207,11 @@ func aggregate(context *cli.Context) error {
 
 		var nodeInfo *api.Node
 		for _, node := range nodes {
+			// Skip ineligible nodes
+			if node.SchedulingEligibility == "ineligible" {
+				continue
+			}
+
 			nodeInfo, _, err = nodeHandle.Info(node.ID, queryOptions)
 			if err != nil {
 				log.Warning(fmt.Sprintf("Error in getting node info: %v. Skipping node: %s\n", err, node.Address))
