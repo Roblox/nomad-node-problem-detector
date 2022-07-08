@@ -52,6 +52,11 @@ var (
 	nnpdRoot          = "/var/lib/nnpd"
 	detectorHTTPToken string
 	auth              bool
+
+	detectorInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "npd_detector_info",
+		Help: "Information about the npd detector",
+	}, []string{"version"})
 )
 
 //Todo: Add comments to describe locking/contention.
@@ -109,7 +114,7 @@ var DetectorCommand = &cli.Command{
 }
 
 func startNpdHttpServer(context *cli.Context) error {
-	log.Info("Starting nomad node problem detector...")
+	log.Info(fmt.Sprintf("Starting nomad node problem detector version %s ...", context.App.Version))
 	detectorCycleTime, err := time.ParseDuration(context.String("detector-cycle-time"))
 	if err != nil {
 		return err
@@ -140,6 +145,8 @@ func startNpdHttpServer(context *cli.Context) error {
 	if nomadAllocDir != "" {
 		nnpdRoot = nomadAllocDir + nnpdRoot
 	}
+
+	detectorInfo.With(prometheus.Labels{"version": context.App.Version}).Set(1)
 
 	done := make(chan bool, 1)
 	go collect(done, detectorCycleTime, limits)
@@ -395,5 +402,6 @@ func registerMetrics() *prometheus.Registry {
 	r := prometheus.NewRegistry()
 	r.MustRegister(prometheus.NewGoCollector())
 	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	r.MustRegister(detectorInfo)
 	return r
 }
