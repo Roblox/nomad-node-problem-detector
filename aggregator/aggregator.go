@@ -169,7 +169,7 @@ func aggregate(context *cli.Context) error {
 	signal.Notify(sigs, syscall.SIGUSR1)
 	go flipPause(sigs)
 
-	metricsExporter(context.String("prometheus-server-addr"), context.Int("prometheus-server-port"))
+	metricsExporter(context.String("prometheus-server-addr"), context.Int("prometheus-server-port"), context.App.Version)
 
 	nodeHandle := client.Nodes()
 

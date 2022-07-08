@@ -59,6 +59,11 @@ var (
 			Name: "nodes_unhealthy",
 			Help: "Count of unhealthy nodes",
 		}, []string{"dc", "check", "host"})
+
+	aggregatorInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "npd_aggregator_info",
+		Help: "Information about the npd aggregator",
+	}, []string{"version"})
 )
 
 func registerMetrics() *prometheus.Registry {
@@ -73,13 +78,18 @@ func registerMetrics() *prometheus.Registry {
 	r.MustRegister(healthCheckUnhealthyCounter)
 	r.MustRegister(prometheus.NewGoCollector())
 	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	r.MustRegister(aggregatorInfo)
+
 	return r
 }
 
-func metricsExporter(exporterAddr string, exporterPort int) {
+func metricsExporter(exporterAddr string, exporterPort int, appVersion string) {
 	addr := net.JoinHostPort(exporterAddr, strconv.Itoa(exporterPort))
 
 	registry := registerMetrics()
+
+	aggregatorInfo.With(prometheus.Labels{"version": appVersion}).Set(1)
+
 	go func() {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
