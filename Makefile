@@ -9,6 +9,12 @@ export GO111MODULE=on
 export NOMAD_ADDR=http://localhost:4646
 export NOMAD_E2E=1
 
+GIT_COMMIT ?= $(shell git rev-parse HEAD)
+BUILD_DATE ?= $(shell date +%s)
+
+LDFLAGS += -X 'main.Timestamp=${BUILD_DATE}'
+LDFLAGS += -X 'main.GitCommit=${GIT_COMMIT}'
+
 default: build
 
 .PHONY: clean
@@ -17,7 +23,7 @@ clean:
 
 .PHONY: build
 build:
-	$(GOLANG) build -o $(BINARY) .
+	$(GOLANG) build -ldflags "$(LDFLAGS)" -o $(BINARY) .
 
 .PHONY: install
 install:
