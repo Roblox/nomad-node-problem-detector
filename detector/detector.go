@@ -238,14 +238,11 @@ func getCPUStats(cpuLimit float64) {
 
 	cpuStats, err := collectCPUStats()
 	if err != nil {
-		hc.Result = "true"
-		hc.Message = err.Error()
+		hc.Update("true", err.Error())
 	} else if cpuStats.User >= cpuLimit {
-		hc.Result = "true"
-		hc.Message = fmt.Sprintf("CPU usage: %f %%", cpuStats.User)
+		hc.Update("true", fmt.Sprintf("CPU usage: %f %%", cpuStats.User))
 	} else {
-		hc.Result = "false"
-		hc.Message = fmt.Sprintf("CPU usage: %f %%", cpuStats.User)
+		hc.Update("false", fmt.Sprintf("CPU usage: %f %%", cpuStats.User))
 	}
 
 	mutex.Lock()
@@ -262,18 +259,18 @@ func getMemoryStats(memoryLimit float64) {
 
 	memoryStats, err := collectMemoryStats()
 	if err != nil {
-		hc.Result = "true"
-		hc.Message = err.Error()
+		hc.Update("true", err.Error())
 	} else {
 		availableMemory := units.HumanSize(float64(memoryStats.Available))
 		availableMemoryPercent := (float64(memoryStats.Available) / float64(memoryStats.Total)) * 100
 		totalMemory := units.HumanSize(float64(memoryStats.Total))
+		var result string
 		if availableMemoryPercent <= memoryAvailableLimit {
-			hc.Result = "true"
+			result = "true"
 		} else {
-			hc.Result = "false"
+			result = "false"
 		}
-		hc.Message = fmt.Sprintf("%s memory available out of %s total memory", availableMemory, totalMemory)
+		hc.Update(result, fmt.Sprintf("%s memory available out of %s total memory", availableMemory, totalMemory))
 	}
 
 	mutex.Lock()
@@ -288,14 +285,11 @@ func getDiskStats(diskLimit float64) {
 
 	diskStats, err := collectDiskStats()
 	if err != nil {
-		hc.Result = "true"
-		hc.Message = err.Error()
+		hc.Update("true", err.Error())
 	} else if diskStats.UsedPercent >= diskLimit {
-		hc.Result = "true"
-		hc.Message = fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent)
+		hc.Update("true", fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent))
 	} else {
-		hc.Result = "false"
-		hc.Message = fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent)
+		hc.Update("false", fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent))
 	}
 
 	mutex.Lock()
@@ -317,11 +311,9 @@ func executeHealthCheck(wg *sync.WaitGroup, cfg types.Config) {
 	cmd.Stdout = &output
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		hc.Result = "Unhealthy"
-		hc.Message = fmt.Sprintf("%s:%s\n", err.Error(), stderr.String())
+		hc.Update("Unhealthy", fmt.Sprintf("%s:%s\n", err.Error(), stderr.String()))
 	} else {
-		hc.Result = "Healthy"
-		hc.Message = output.String()
+		hc.Update("Healthy", output.String())
 	}
 
 	mutex.Lock()

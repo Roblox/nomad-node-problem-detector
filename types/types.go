@@ -17,10 +17,19 @@ limitations under the License.
 
 package types
 
+import "time"
+
 type HealthCheck struct {
-	Type    string `json:"type"`
-	Result  string `json:"result"`
-	Message string `json:"message"`
+	Type    string    `json:"type"`
+	Result  string    `json:"result"`
+	Message string    `json:"message"`
+	LastRun time.Time `json:"last_run"`
+}
+
+func (h *HealthCheck) Update(result, message string) {
+	h.Result = result
+	h.Message = message
+	h.LastRun = time.Now()
 }
 
 type Config struct {
