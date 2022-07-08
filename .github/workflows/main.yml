@@ -22,3 +22,4 @@ jobs:
           sudo ./setup.sh
           cd ..
           sudo make test
+          nomad node status
