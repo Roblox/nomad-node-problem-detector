@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euxo pipefail
+
 main() {
     # Install golang-1.16.5
     if [ ! -f "/usr/local/go/bin/go" ]; then
