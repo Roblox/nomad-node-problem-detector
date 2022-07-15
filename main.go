@@ -18,9 +18,12 @@ limitations under the License.
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
+	"fmt"
 	"os"
+	"strconv"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	aggregator "github.com/nomad-node-problem-detector/aggregator"
 	config "github.com/nomad-node-problem-detector/config"
@@ -28,12 +31,25 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var (
+	Timestamp  string
+	GitCommit  string
+	GitVersion string
+)
+
 func main() {
+	// convert the timestamp to a date time to populate correctly the
+	// information for the app
+	i, err := strconv.ParseInt(Timestamp, 10, 64)
+	if err != nil {
+		log.Fatalf("failed to convert %s to an integer: %v", Timestamp, err)
+	}
+
 	app := &cli.App{
 		Name:                 "npd",
 		Usage:                "Nomad node problem detector",
-		Version:              "v1.0.0",
-		Compiled:             time.Now(),
+		Version:              fmt.Sprintf("%s (%s)", GitVersion, GitCommit),
+		Compiled:             time.Unix(i, 0),
 		EnableBashCompletion: true,
 		Authors: []*cli.Author{
 			{
@@ -48,7 +64,7 @@ func main() {
 		},
 	}
 
-	err := app.Run(os.Args)
+	err = app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}
