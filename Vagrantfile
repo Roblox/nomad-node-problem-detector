@@ -28,20 +28,22 @@ Vagrant.configure("2") do |config|
     echo "export PATH=$PATH:/usr/local/go/bin" >> /home/vagrant/.bashrc
     source /home/vagrant/.bashrc
 
-    # Install golang-1.14.3
+    # Install golang-1.18.4
     if [ ! -f "/usr/local/go/bin/go" ]; then
-      curl -s -L -o go1.14.3.linux-amd64.tar.gz https://dl.google.com/go/go1.14.3.linux-amd64.tar.gz
-      sudo tar -C /usr/local -xzf go1.14.3.linux-amd64.tar.gz
+      GO_ARCHIVE=go1.18.4.linux-amd64.tar.gz
+      curl -s -L -o "${GO_ARCHIVE}" "https://dl.google.com/go/${GO_ARCHIVE}"
+      sudo tar -C /usr/local -xzf "${GO_ARCHIVE}"
       sudo chmod +x /usr/local/go
-      rm -f go1.14.3.linux-amd64.tar.gz
+      rm -f "${GO_ARCHIVE}"
     fi
 
     # Install nomad-1.1.4
     if [ ! -f "/usr/bin/nomad" ]; then
-      wget --quiet https://releases.hashicorp.com/nomad/1.1.4/nomad_1.1.4_linux_amd64.zip
-      unzip nomad_1.1.4_linux_amd64.zip -d /usr/bin
+      NOMAD_VERSION=1.1.4
+      wget --quiet "https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip"
+      unzip "nomad_${NOMAD_VERSION}_linux_amd64.zip" -d /usr/bin
       chmod +x /usr/bin/nomad
-      rm -f nomad_1.1.4_linux_amd64.zip
+      rm -f "nomad_${NOMAD_VERSION}_linux_amd64.zip"
     fi
 
     # Run setup
