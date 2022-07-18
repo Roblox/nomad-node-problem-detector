@@ -11,7 +11,7 @@ import (
 
 func tarDir(destinationFilename, sourceDir string) error {
 	if destinationFilename[len(destinationFilename)-3:] != "tar" {
-		return fmt.Errorf("Please provide a valid tar filename")
+		return fmt.Errorf("please provide a valid tar filename")
 	}
 
 	tarFile, err := os.Create(destinationFilename)

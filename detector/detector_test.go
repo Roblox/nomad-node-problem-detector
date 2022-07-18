@@ -172,7 +172,7 @@ func TestNodeHealthEndpoint(t *testing.T) {
 	}
 
 	actual := []types.HealthCheck{}
-	if err := json.Unmarshal([]byte(rr.Body.String()), &actual); err != nil {
+	if err := json.Unmarshal(rr.Body.Bytes(), &actual); err != nil {
 		t.Fatal(err)
 	}
 

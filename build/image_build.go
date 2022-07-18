@@ -52,7 +52,7 @@ func BuildImage(imageName, rootDir string) error {
 	}
 
 	ctx := context.Background()
-	cli, err := client.NewEnvClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err
 	}
@@ -76,6 +76,10 @@ func BuildImage(imageName, rootDir string) error {
 	buildContext.Close()
 
 	dockerBuildContext, err := os.Open(tmpDir + "/buildContext.tar")
+	if err != nil {
+		return err
+	}
+
 	defer dockerBuildContext.Close()
 
 	options := types.ImageBuildOptions{
