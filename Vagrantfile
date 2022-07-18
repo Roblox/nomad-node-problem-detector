@@ -25,7 +25,7 @@ Vagrant.configure("2") do |config|
 
     # Setup go paths
     echo "export GOPATH=/home/vagrant/go" >> /home/vagrant/.bashrc
-    echo "export PATH=$PATH:/usr/local/go/bin" >> /home/vagrant/.bashrc
+    echo "export PATH=$PATH:/usr/local/go/bin:/usr/local/staticcheck/" >> /home/vagrant/.bashrc
     source /home/vagrant/.bashrc
 
     # Install golang-1.18.4
@@ -35,6 +35,15 @@ Vagrant.configure("2") do |config|
       sudo tar -C /usr/local -xzf "${GO_ARCHIVE}"
       sudo chmod +x /usr/local/go
       rm -f "${GO_ARCHIVE}"
+    fi
+
+    # Install staticcheck-2022.1.2
+    if [ ! -f "/usr/local/go/bin/staticcheck" ]; then
+      STATICCHECK_ARCHIVE=staticcheck_linux_amd64.tar.gz
+      curl -s -L -o "${STATICCHECK_ARCHIVE}" https://github.com/dominikh/go-tools/releases/download/2022.1.2/staticcheck_linux_amd64.tar.gz
+      sudo tar -C /usr/local/ -xzf "${STATICCHECK_ARCHIVE}"
+      sudo chmod +x /usr/local/staticcheck/staticcheck
+      rm -f "${STATICCHECK_ARCHIVE}"
     fi
 
     # Install nomad-1.1.4

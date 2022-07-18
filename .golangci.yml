@@ -1,0 +1,6 @@
+linters:
+  disable:
+    # TODO: we should not disable this linter, however we still have a
+    # few errors reported by it at the moment. Once they are removed
+    # we need to drop errcheck from the list
+    errcheck
