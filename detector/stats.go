@@ -89,7 +89,7 @@ func collectDiskStats() (*DiskStats, error) {
 		}
 		usage, err := disk.Usage(partition.Mountpoint)
 		if err != nil {
-			return nil, fmt.Errorf("Error fetching host disk usage stats: %s\n", partition.Mountpoint)
+			return nil, fmt.Errorf("error fetching host disk usage stats: %s", partition.Mountpoint)
 		}
 		diskStats = toDiskStats(usage, &partition)
 	}

@@ -101,7 +101,7 @@ func buildConfig(context *cli.Context) error {
 	configFilePath := rootDir + "/config.json"
 	if _, err := os.Stat(configFilePath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("config.json missing in --root-dir: %s. npd config build -h for help\n", rootDir)
+			return fmt.Errorf("config.json missing in --root-dir: %s. npd config build -h for help", rootDir)
 		}
 		return err
 	}
@@ -167,11 +167,11 @@ func generateConfig(context *cli.Context) error {
 		}
 
 		if len(hcFiles) == 0 {
-			return fmt.Errorf("Health check missing in %s directory.", healthCheckDir)
+			return fmt.Errorf("health check missing in %s directory", healthCheckDir)
 		}
 
 		if len(hcFiles) > 1 {
-			return fmt.Errorf("There should be only 1 health check present in the %s directory.\nIf health checks are present at a different location, use --root-dir to set the location. npd config generate --help for more details.\n", healthCheckDir)
+			return fmt.Errorf("there should be only 1 health check present in the %s directory.\nIf health checks are present at a different location, use --root-dir to set the location. npd config generate --help for more details", healthCheckDir)
 		}
 
 		res.HealthCheck = hcFiles[0].Name()
@@ -179,7 +179,7 @@ func generateConfig(context *cli.Context) error {
 	}
 
 	if !directoryExists {
-		return fmt.Errorf("Error in generating config. No health checks present.")
+		return fmt.Errorf("error in generating config. No health checks present")
 	}
 
 	byteArray, err := json.MarshalIndent(result, "", "\t")

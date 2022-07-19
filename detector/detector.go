@@ -124,7 +124,7 @@ func startNpdHttpServer(context *cli.Context) error {
 	if auth {
 		detectorHTTPToken = os.Getenv("DETECTOR_HTTP_TOKEN")
 		if detectorHTTPToken == "" {
-			return fmt.Errorf("DETECTOR_HTTP_TOKEN environment variable is missing, with --auth enabled.")
+			return fmt.Errorf("the environment variable `DETECTOR_HTTP_TOKEN' is missing, with --auth enabled")
 		}
 	}
 
@@ -174,7 +174,7 @@ func startNpdHttpServer(context *cli.Context) error {
 func readConfig(configPath string, configFile interface{}) error {
 	if _, err := os.Stat(configPath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("Config file: %s does not exist.", configPath)
+			return fmt.Errorf("config file: %s does not exist", configPath)
 		} else {
 			return err
 		}
@@ -332,14 +332,14 @@ func validateAuthorizationToken(w http.ResponseWriter, r *http.Request) error {
 	response := r.Header.Get("Authorization")
 	tokens := strings.Split(response, " ")
 	if len(tokens) < 2 {
-		return fmt.Errorf("Malformed or missing token in http request header\n")
+		return fmt.Errorf("malformed or missing token in http request header")
 	}
 
 	requestToken := tokens[1]
 	token := base64.StdEncoding.EncodeToString([]byte(detectorHTTPToken))
 
 	if token != requestToken {
-		return fmt.Errorf("Invalid token in http request header\n")
+		return fmt.Errorf("invalid token in http request header")
 	}
 	return nil
 }

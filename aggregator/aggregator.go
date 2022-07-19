@@ -142,7 +142,7 @@ func aggregate(context *cli.Context) error {
 	for _, attribute := range nodeAttributes {
 		result := strings.Split(attribute, "=")
 		if len(result) != 2 {
-			return fmt.Errorf("Invalid --node-attribute. Set key=val for valid node attribute.")
+			return fmt.Errorf("invalid --node-attribute. Set key=val for valid node attribute")
 		}
 		nodeAttributesMap[result[0]] = result[1]
 	}
@@ -161,7 +161,7 @@ func aggregate(context *cli.Context) error {
 	// when reaching out to npd detectors.
 	datacenter := os.Getenv("NOMAD_DC")
 	if datacenter == "" {
-		return fmt.Errorf("NOMAD_DC environment variable missing. Datacenter must be set.")
+		return fmt.Errorf("the environment variable `NOMAD_DC' is missing. Datacenter must be set")
 	}
 	detectorDCMap[datacenter] = true
 
@@ -393,7 +393,6 @@ func aggregate(context *cli.Context) error {
 
 		time.Sleep(aggregationCycleTime)
 	}
-	return nil
 }
 
 // getEligibleNodeCount return the count of eligible nodes.
@@ -452,15 +451,12 @@ func isNpdServerActive(npdServer, authToken string) (bool, error) {
 
 // flipPause pauses and unpauses aggregator based on receiving SIGUSR1 signal.
 func flipPause(sigs chan os.Signal) {
-	for {
-		select {
-		case <-sigs:
-			pause = !pause
-			if pause {
-				log.Info("Received signal SIGUSR1, pausing aggregator.")
-			} else {
-				log.Info("Received signal SIGUSR1, unpausing aggregator.")
-			}
+	for range sigs {
+		pause = !pause
+		if pause {
+			log.Info("Received signal SIGUSR1, pausing aggregator.")
+		} else {
+			log.Info("Received signal SIGUSR1, unpausing aggregator.")
 		}
 	}
 }
