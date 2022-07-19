@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,6 +37,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	units "github.com/docker/go-units"
+	"github.com/nomad-node-problem-detector/detector/logwatchers"
 	types "github.com/nomad-node-problem-detector/types"
 	"github.com/urfave/cli/v2"
 )
@@ -52,6 +54,8 @@ var (
 	nnpdRoot          = "/var/lib/nnpd"
 	detectorHTTPToken string
 	auth              bool
+
+	logWatcherProblemCounter = &prometheus.CounterVec{}
 )
 
 //Todo: Add comments to describe locking/contention.
@@ -63,6 +67,10 @@ var DetectorCommand = &cli.Command{
 	Name:  "detector",
 	Usage: "Run nomad node problem detector HTTP server",
 	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:  "log-monitor",
+			Usage: "List of configuration file name for monitoring logs. Can be repeated multiple time, and is relative to the root directory.",
+		},
 		&cli.StringFlag{
 			Name:    "detector-cycle-time",
 			Aliases: []string{"t"},
@@ -144,6 +152,10 @@ func startNpdHttpServer(context *cli.Context) error {
 	done := make(chan bool, 1)
 	go collect(done, detectorCycleTime, limits)
 	<-done
+
+	if err := SetupLogMonitor(context.StringSlice("log-monitor")); err != nil {
+		return err
+	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Welcome to Nomad node problem detector!\n"))
@@ -377,6 +389,37 @@ func nodeHealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(respJSON)
 }
 
+// SetupLogMonitor configures the various log monitors based on the
+// provided configuration. For each of the monitors, we start a
+// watcher which will receive events that are matching the provided
+// rules.
+func SetupLogMonitor(logMonitorsConfigFile []string) error {
+	for _, cfgFilename := range logMonitorsConfigFile {
+		cfgFilePath := path.Join(nnpdRoot, cfgFilename)
+		loggingMonitorConfig := &types.LogWatcherConfig{}
+		if err := readConfig(cfgFilePath, loggingMonitorConfig); err != nil {
+			return fmt.Errorf("error in reading config %s: %s", cfgFilePath, err)
+		}
+		watcher, err := logwatchers.GetLogWatcher(loggingMonitorConfig)
+		if err != nil {
+			return err
+		}
+		go logMonitor(watcher)
+	}
+	return nil
+}
+
+// logMonitor receives events from the various log monitors and handle
+// these events.
+func logMonitor(w types.LogWatcher) {
+	logCh := w.Watch()
+	for {
+		got := <-logCh
+		log.Infof("log watcher received for %s: %s", got.Name, got.Message)
+		logWatcherProblemCounter.With(prometheus.Labels{"check": got.Name}).Inc()
+	}
+}
+
 func metricsHandler(registry *prometheus.Registry) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if auth {
@@ -392,8 +435,19 @@ func metricsHandler(registry *prometheus.Registry) http.Handler {
 }
 
 func registerMetrics() *prometheus.Registry {
+	counterOpts := prometheus.CounterOpts{}
+
+	if nomadDc, ok := os.LookupEnv("NOMAD_DC"); ok {
+		counterOpts.ConstLabels = prometheus.Labels{"nomad_dc": nomadDc}
+	}
+
+	counterOpts.Name = "npd_detector_log_problem_count"
+	counterOpts.Help = "Number of time a specific log problem was reported"
+	logWatcherProblemCounter = prometheus.NewCounterVec(counterOpts, []string{"check"})
+
 	r := prometheus.NewRegistry()
 	r.MustRegister(prometheus.NewGoCollector())
 	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	r.MustRegister(logWatcherProblemCounter)
 	return r
 }

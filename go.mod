@@ -6,6 +6,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/armon/go-metrics v0.3.8 // indirect
 	github.com/containerd/containerd v1.5.10 // indirect
+	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200330121334-7f8b4b621b5d+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/go-ole/go-ole v1.2.5 // indirect
