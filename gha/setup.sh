@@ -1,21 +1,24 @@
 #!/bin/bash
 
 main() {
-    # Install golang-1.16.5
+    # Install golang
     if [ ! -f "/usr/local/go/bin/go" ]; then
-      curl -s -L -o go1.16.5.linux-amd64.tar.gz https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
-      tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz
+      GO_ARCHIVE=go1.18.4.linux-amd64.tar.gz
+      curl -s -L -o "${GO_ARCHIVE}" "https://dl.google.com/go/${GO_ARCHIVE}"
+      tar -C /usr/local -xzf "${GO_ARCHIVE}"
       chmod +x /usr/local/go
-      rm -f go1.16.5.linux-amd64.tar.gz
+      rm -f "${GO_ARCHIVE}"
     fi
-    echo "golang-1.16.5 installed successfully."
+    go_version=$(/usr/local/go/bin/go version)
+    echo "golang ${go_version} installed successfully."
 
-    # Install nomad-1.1.0
+    # Install nomad
     if [ ! -f "/usr/bin/nomad" ]; then
-      wget --quiet https://releases.hashicorp.com/nomad/1.1.0/nomad_1.1.0_linux_amd64.zip
-      unzip nomad_1.1.0_linux_amd64.zip -d /usr/bin
+      NOMAD_VERSION=1.1.4
+      wget --quiet "https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip"
+      unzip "nomad_${NOMAD_VERSION}_linux_amd64.zip" -d /usr/bin
       chmod +x /usr/bin/nomad
-      rm -f nomad_1.1.0_linux_amd64.zip
+      rm -f "nomad_${NOMAD_VERSION}_linux_amd64.zip"
     fi
     echo "nomad-1.1.0 installed successfully."
 
