@@ -182,6 +182,7 @@ $ curl -H "Authorization: Basic <base64_encoded_token>" http://localhost:8083/v1
 | **cpu-limit** | string | no | `85` | CPU threshold in percentage. |
 | **memory-limit** | string | no | `80` | Memory threshold in percentage. |
 | **disk-limit** | string | no | `90` | Disk threshold in percentage. |
+| **log-monitor** | string | no | unset | The configuration file for monitoring logs. This can be repeated multiple times. The path to the files are relative to the value of the **root-dir**. |
 
 **Config** - Run config and health checks related commands.
 
@@ -201,6 +202,44 @@ There are two subcommands in `npd config` command:
 | :---: | :---: | :---: | :---: | :--- |
 | **image** | string | yes | `N/A` | Fully qualified docker image name |
 | **root-dir** | string | no | `pwd - present working directory` | Location of health checks |
+
+### Configurations for the log watchers
+
+At the moment, only `systemd`'s `journald` is supported. Example of configurations:
+```
+$ sudo cat /var/lib/nnpd/log-systemd.json
+{
+  "type": "log",
+  "source": "journald",
+  "syslog_identifier": "systemd",
+  "rules": [
+    {
+      "name": "nomad_restart",
+      "pattern": "Started nomad server"
+    },
+    {
+      "name": "docker_restart",
+      "pattern": "Starting Docker Application Container Engine"
+    },
+    {
+      "name": "auth",
+      "pattern": "pam_unix"
+    }
+  ]
+}
+$ sudo cat /var/lib/nnpd/log-systemd-sudo.json
+        {
+  "type": "log",
+  "source": "journald",
+  "syslog_identifier": "sudo",
+  "rules": [
+    {
+      "name": "pam",
+      "pattern": "pam_unix(sudo:session): session opened"
+    }
+  ]
+}
+```
 
 ## Tests
 

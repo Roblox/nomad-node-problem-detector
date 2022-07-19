@@ -17,7 +17,10 @@ limitations under the License.
 
 package types
 
-import "time"
+import (
+	"regexp"
+	"time"
+)
 
 type HealthCheck struct {
 	Type    string    `json:"type"`
@@ -35,4 +38,36 @@ func (h *HealthCheck) Update(result, message string) {
 type Config struct {
 	Type        string `json:"type"`
 	HealthCheck string `json:"health_check"`
+}
+
+// LogWatcherConfig represents the configuration for a log
+// monitor.
+type LogWatcherConfig struct {
+	// The type of the source (for example: journald)
+	Source string `json:"source"`
+	// The value of the syslog identifier
+	SyslogIdentifier string `json:"syslog_identifier"`
+	// The rules associated with the given source
+	Rules []LogWatcherRule `json:"rules"`
+}
+
+// LogWatcherRule represents individual rules for a log monitors.
+type LogWatcherRule struct {
+	// The name of the rule (will be used as a label in the metrics)
+	Name string `json:"name"`
+	// The pattern that is used to match a problem
+	Pattern string `json:"pattern"`
+	// The compiled regexp from the given patterns
+	Regexp *regexp.Regexp
+}
+
+// LogMessage represents the events that are matching a log event.
+type LogMessage struct {
+	Name    string
+	Message string
+}
+
+// LogWatcher is the interface to create a new log watcher.
+type LogWatcher interface {
+	Watch() <-chan *LogMessage
 }
