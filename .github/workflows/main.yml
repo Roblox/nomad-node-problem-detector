@@ -9,6 +9,17 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  golangci-lint:
+    name: "Run Golang CI Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Run golangci-lint
+        uses: Roblox-ActionsCache/golangci-golangci-lint-action@v2
+        with:
+          version: latest
   build:
     runs-on: ubuntu-latest
     steps:
