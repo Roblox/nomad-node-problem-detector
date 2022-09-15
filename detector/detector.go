@@ -57,6 +57,10 @@ var (
 		Name: "npd_detector_info",
 		Help: "Information about the npd detector",
 	}, []string{"version"})
+
+	healthCheckErrorCounter   = &prometheus.CounterVec{}
+	healthCheckProblemCounter = &prometheus.CounterVec{}
+	healthCheckProblemGauge   = &prometheus.GaugeVec{}
 )
 
 //Todo: Add comments to describe locking/contention.
@@ -233,6 +237,19 @@ func collect(done chan bool, detectorCycleTime time.Duration, limits *Limits) {
 			startServer = true
 			done <- startServer
 		}
+
+		for _, hc := range m {
+			// After we're done running all the checks, we update the
+			// counter and gauges. If the test failed, we increase by
+			// 1 the counter and set the gauge to 1.
+			var failed = 0
+			if hc.Result == "true" || hc.Result == "Unhealthy" {
+				failed = 1
+			}
+			healthCheckProblemGauge.With(prometheus.Labels{"check": hc.Type}).Set(float64(failed))
+			healthCheckProblemCounter.With(prometheus.Labels{"check": hc.Type}).Add(float64(failed))
+		}
+
 		time.Sleep(detectorCycleTime)
 	}
 
@@ -246,6 +263,7 @@ func getCPUStats(cpuLimit float64) {
 	cpuStats, err := collectCPUStats()
 	if err != nil {
 		hc.Update("true", err.Error())
+		healthCheckErrorCounter.With(prometheus.Labels{"check": hc.Type}).Inc()
 	} else if cpuStats.User >= cpuLimit {
 		hc.Update("true", fmt.Sprintf("CPU usage: %f %%", cpuStats.User))
 	} else {
@@ -267,6 +285,7 @@ func getMemoryStats(memoryLimit float64) {
 	memoryStats, err := collectMemoryStats()
 	if err != nil {
 		hc.Update("true", err.Error())
+		healthCheckErrorCounter.With(prometheus.Labels{"check": hc.Type}).Inc()
 	} else {
 		availableMemory := units.HumanSize(float64(memoryStats.Available))
 		availableMemoryPercent := (float64(memoryStats.Available) / float64(memoryStats.Total)) * 100
@@ -293,6 +312,7 @@ func getDiskStats(diskLimit float64) {
 	diskStats, err := collectDiskStats()
 	if err != nil {
 		hc.Update("true", err.Error())
+		healthCheckErrorCounter.With(prometheus.Labels{"check": hc.Type}).Inc()
 	} else if diskStats.UsedPercent >= diskLimit {
 		hc.Update("true", fmt.Sprintf("disk usage is %f %%", diskStats.UsedPercent))
 	} else {
@@ -399,9 +419,32 @@ func metricsHandler(registry *prometheus.Registry) http.Handler {
 }
 
 func registerMetrics() *prometheus.Registry {
+	counterOpts := prometheus.CounterOpts{}
+	gaugeOpts := prometheus.GaugeOpts{}
+
+	if nomadDC, ok := os.LookupEnv("NOMAD_DC"); ok {
+		counterOpts.ConstLabels = prometheus.Labels{"nomad_dc": nomadDC}
+		gaugeOpts.ConstLabels = prometheus.Labels{"nomad_dc": nomadDC}
+	}
+
+	counterOpts.Name = "npd_detector_check_error_count"
+	counterOpts.Help = "Number of time a specific health check errored out"
+	healthCheckErrorCounter = prometheus.NewCounterVec(counterOpts, []string{"check"})
+
+	counterOpts.Name = "npd_detector_problem_count"
+	counterOpts.Help = "Number of time a specific health checks failed"
+	healthCheckProblemCounter = prometheus.NewCounterVec(counterOpts, []string{"check"})
+
+	gaugeOpts.Name = "npd_detector_problem"
+	gaugeOpts.Help = "If a specific check is affecting the host or not"
+	healthCheckProblemGauge = prometheus.NewGaugeVec(gaugeOpts, []string{"check"})
+
 	r := prometheus.NewRegistry()
 	r.MustRegister(prometheus.NewGoCollector())
 	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	r.MustRegister(detectorInfo)
+	r.MustRegister(healthCheckProblemCounter)
+	r.MustRegister(healthCheckProblemGauge)
+	r.MustRegister(healthCheckErrorCounter)
 	return r
 }
