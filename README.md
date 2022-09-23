@@ -177,6 +177,7 @@ $ curl -H "Authorization: Basic <base64_encoded_token>" http://localhost:8083/v1
 | :---: | :---: | :---: | :---: | :--- |
 | **detector-cycle-time** | string | no | `3s` | Time (in seconds) to wait between each detector cycle. |
 | **port** | string | no | `:8083` | Address to listen on for detector HTTP server.<br/> **NOTE:** If your `detector` is listening on a non-default port, don't forget to start your `aggregator` with `--detector-port` flag. This will inform `aggregator` which `detector` port to reach out to. |
+| **prometheus-metrics-path** | string | no | `/v1/metrics/` | Set the path that is used by the metrics endpoint to expose detector metrics in the prometheus format. |
 | **auth** | bool | no | false | If set to true, `detector` must set `DETECTOR_HTTP_TOKEN=<your_token>` as an environment variable when starting `detector`. |
 | **root-dir** | string | no | `/var/lib/nnpd` | Location of health checks. |
 | **cpu-limit** | string | no | `85` | CPU threshold in percentage. |
