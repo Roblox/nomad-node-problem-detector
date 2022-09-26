@@ -84,6 +84,11 @@ var DetectorCommand = &cli.Command{
 			Value:   ":8083",
 			Usage:   "Address to listen on for detector HTTP server",
 		},
+		&cli.StringFlag{
+			Name:  "prometheus-metrics-path",
+			Value: "/v1/metrics/",
+			Usage: "The path to expose the detector metrics in prometheus format",
+		},
 		&cli.BoolFlag{
 			Name:  "auth",
 			Usage: "If set to true, detector must set DETECTOR_HTTP_TOKEN=<your_token> as an environment variable when starting detector",
@@ -161,7 +166,9 @@ func startNpdHttpServer(context *cli.Context) error {
 	})
 	http.HandleFunc("/v1/health/", healthCheckHandler)
 	http.HandleFunc("/v1/nodehealth/", nodeHealthHandler)
-	http.Handle("/v1/metrics/", metricsHandler(reg))
+
+	metricsPath := context.String("prometheus-metrics-path")
+	http.Handle(metricsPath, metricsHandler(reg))
 
 	log.Info(fmt.Sprintf("detector started with --cpu-limit: %s%%", limits.cpuLimit))
 	log.Info(fmt.Sprintf("detector started with --memory-limit: %s%%", limits.memoryLimit))
